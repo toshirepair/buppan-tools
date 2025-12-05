@@ -1,1 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>買取査定ツール（Web版）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 16px;
+      line-height: 1.6;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+    label {
+      display: inline-block;
+      margin-right: 12px;
+      margin-bottom: 4px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 18px;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 6px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      margin-top: 12px;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: default;
+    }
+    .small {
+      font-size: 0.85rem;
+      color: #555;
+    }
+    ul.result-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+      margin-top: 8px;
+    }
+    ul.result-list li {
+      margin-bottom: 14px; /* 行間のゆとり */
+    }
+    a.result-link {
+      font-size: 1rem;
+      text-decoration: underline;
+      color: #2563eb;
+    }
+    textarea.copy-area {
+      width: 100%;
+      min-height: 120px;
+      box-sizing: border-box;
+      font-size: 0.85rem;
+      margin-top: 8px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>買取査定ツール（Web版）</h1>
+  <p class="small">
+    型番を入れて「検索開始」を押すと、<br>
+    Google（買取価格）、カメラのキタムラ買取、マップカメラ買取、ヤフオク落札相場、eBay SOLD、価格決定シートのリンク一覧を表示します。<br>
+    下部の「この結果をコピー」ボタンで、チャットワークやメモに一括貼り付けできます。
+  </p>
 
+  <div class="card">
+    <div>
+      <label for="model"><strong>型番（ベースキーワード）</strong></label>
+      <input type="text" id="model" placeholder="例：Nikon D750 50mm f1.8 など">
+    </div>
+
+    <div style="margin-top: 12px;">
+      <div><strong>状態（ヤフオク・eBay のみ反映）</strong></div>
+      <label><input type="checkbox" id="cond_new"> 新品</label>
+      <label><input type="checkbox" id="cond_mint" checked> 美品</label>
+      <label><input type="checkbox" id="cond_exc"> 並品</label>
+      <label><input type="checkbox" id="cond_read"> 訳あり</label>
+      <label><input type="checkbox" id="cond_asis"> ジャンク</label>
+      <div class="small">
+        ※ 状態を選ぶと、ヤフオクは「日本語状態」、eBayは「英語状態（new / mint / exc / read / asis）」を末尾に付けて検索します。<br>
+        ※ キタムラ・マップカメラは状態ワードは付けず、型番のみで検索します。
+      </div>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <strong>オプション</strong><br>
+      <label>
+        <input type="checkbox" id="open_sheet" checked>
+        価格決定シートをリンク一覧に含める
+      </label>
+    </div>
+
+    <button id="runBtn">検索開始</button>
+  </div>
+
+  <div id="result" class="card" style="display:none; margin-top:16px;">
+    <strong>リンク一覧（スマホ／PC共通）</strong>
+    <div id="resultLinks" class="small" style="margin-top:8px;"></div>
+  </div>
+
+  <script>
+    document.getElementById("runBtn").addEventListener("click", function () {
+      const modelInput = document.getElementById("model");
+      const baseWord = modelInput.value.trim();
+
+      if (!baseWord) {
+        alert("型番を入力してください。");
+        modelInput.focus();
+        return;
+      }
+
+      const condNew  = document.getElementById("cond_new").checked;
+      const condMint = document.getElementById("cond_mint").checked;
+      const condExc  = document.getElementById("cond_exc").checked;
+      const condRead = document.getElementById("cond_read").checked;
+      const condAsis = document.getElementById("cond_asis").checked;
+      const openSheet = document.getElementById("open_sheet").checked;
+
+      const hasCondition = condNew || condMint || condExc || condRead || condAsis;
+
+      const links = []; // {label, url} の配列
+
+      // Google 用（買取価格を付けるのはここだけ）
+      const googleWord = baseWord + " 買取価格";
+      const googleUrlWord = encodeURIComponent(googleWord);
+
+      // 他サイトは「型番のみ」をベース
+      const baseUrlWord = encodeURIComponent(baseWord);
+
+      // --------------------------------
+      // 1. Google（SEO順）
+      // --------------------------------
+      const googleUrl = "https://www.google.com/search?q=" + googleUrlWord;
+      links.push({ label: "Google（買取価格付き）", url: googleUrl });
+
+      // --------------------------------
+      // 2. カメラのキタムラ（買取）
+      // https://www.net-chuko.com/ec/sell/item-list?keyword=TESTWORD
+      // --------------------------------
+      const kitaUrl =
+        "https://www.net-chuko.com/ec/sell/item-list?keyword=" + baseUrlWord;
+      links.push({ label: "カメラのキタムラ買取", url: kitaUrl });
+
+      // --------------------------------
+      // 3. マップカメラ（買取）
+      // https://www.mapcamera.com/ec/assessment/search?keyword=TESTWORD
+      // --------------------------------
+      const mapUrl =
+        "https://www.mapcamera.com/ec/assessment/search?keyword=" + baseUrlWord;
+      links.push({ label: "マップカメラ買取", url: mapUrl });
+
+      // --------------------------------
+      // 4. ヤフオク落札相場（高い順）
+      // --------------------------------
+      function buildYahuUrl(word, labelSuffix) {
+        const w = encodeURIComponent(word);
+        const baseYahu =
+          "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=TESTWORD&va=TESTWORD&b=1&n=100&select=2";
+        const url = baseYahu.replace(/TESTWORD/g, w);
+        links.push({ label: "ヤフオク落札相場" + labelSuffix, url: url });
+      }
+
+      if (hasCondition) {
+        if (condNew)  buildYahuUrl(baseWord + " 新品", "（新品）");
+        if (condMint) buildYahuUrl(baseWord + " 美品", "（美品）");
+        if (condExc)  buildYahuUrl(baseWord + " 並品", "（並品）");
+        if (condRead) buildYahuUrl(baseWord + " 訳あり", "（訳あり）");
+        if (condAsis) buildYahuUrl(baseWord + " ジャンク", "（ジャンク）");
+      } else {
+        buildYahuUrl(baseWord, "");
+      }
+
+      // --------------------------------
+      // 5. eBay SOLD（高い順）
+      // --------------------------------
+      function buildEbayUrl(word, labelSuffix) {
+        const w = encodeURIComponent(word);
+        const baseEbay =
+          "https://www.ebay.com/sch/i.html?_nkw=TESTWORD&_sacat=0&LH_Sold=1&LH_Complete=1&_sop=16";
+        const url = baseEbay.replace("TESTWORD", w);
+        links.push({ label: "eBay Sold履歴" + labelSuffix, url: url });
+      }
+
+      if (hasCondition) {
+        if (condNew)  buildEbayUrl(baseWord + " new", "（new）");
+        if (condMint) buildEbayUrl(baseWord + " mint", "（mint）");
+        if (condExc)  buildEbayUrl(baseWord + " exc", "（exc）");
+        if (condRead) buildEbayUrl(baseWord + " read", "（read）");
+        if (condAsis) buildEbayUrl(baseWord + " asis", "（asis）");
+      } else {
+        buildEbayUrl(baseWord, "");
+      }
+
+      // --------------------------------
+      // 6. 価格決定シート（オプション）
+      // --------------------------------
+      if (openSheet) {
+        const sheetUrl =
+          "https://docs.google.com/spreadsheets/d/1XMfP-UmRxQ-mCCcfqvFkkfwpRqOiywTPVPnMLeadaBA/edit?gid=0#gid=0";
+        links.push({ label: "価格決定シート", url: sheetUrl });
+      }
+
+      // 一覧表示＋コピー用テキスト生成
+      renderLinks(links, baseWord);
+    });
+
+    function renderLinks(links, keyword) {
+      const resultDiv = document.getElementById("result");
+      const resultLinks = document.getElementById("resultLinks");
+
+      if (!links || links.length === 0) {
+        resultDiv.style.display = "none";
+        resultLinks.innerHTML = "";
+        return;
+      }
+
+      // 画面用：見やすいリンク一覧
+      let html = '<ul class="result-list">';
+      links.forEach(link => {
+        html += `
+          <li>
+            <a class="result-link" href="${link.url}" target="_blank" rel="noopener noreferrer">
+              <strong>${link.label}</strong>
+            </a>
+          </li>
+        `;
+      });
+      html += "</ul>";
+
+      // コピー用テキスト生成（先頭に検索キーワード）
+      let copyText = "";
+      copyText += `検索キーワード：${keyword}\n\n`;
+      links.forEach(link => {
+        copyText += `${link.label}\n${link.url}\n\n`;
+      });
+
+      // コピー用テキストエリア＋ボタン
+      html += `
+        <p style="margin-top:12px; font-weight:bold;">コピー用（チャットワークなどに保存したいとき）</p>
+        <p class="small">※ 「この結果をコピー」ボタンを押して、チャットワークやメモに貼り付けてください。</p>
+        <button type="button" id="copyBtn">この結果をコピー</button>
+        <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
+      `;
+
+      resultLinks.innerHTML = html;
+      resultDiv.style.display = "block";
+
+      // コピーボタンの処理をセット
+      const copyBtn = document.getElementById("copyBtn");
+      const copyArea = document.getElementById("copyArea");
+
+      if (copyBtn && copyArea) {
+        copyBtn.addEventListener("click", function () {
+          const text = copyArea.value;
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+              .then(() => {
+                alert("コピーしました。チャットワークやメモに貼り付けてください。");
+              })
+              .catch(() => {
+                // フォールバック
+                copyArea.focus();
+                copyArea.select();
+                document.execCommand("copy");
+                alert("コピーしました。チャットワークやメモに貼り付けてください。");
+              });
+          } else {
+            // 古いブラウザ用フォールバック
+            copyArea.focus();
+            copyArea.select();
+            document.execCommand("copy");
+            alert("コピーしました。チャットワークやメモに貼り付けてください。");
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>
