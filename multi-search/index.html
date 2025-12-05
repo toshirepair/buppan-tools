@@ -65,14 +65,25 @@
       text-decoration: underline;
       color: #2563eb;
     }
+    textarea.copy-area {
+      width: 100%;
+      min-height: 120px;
+      box-sizing: border-box;
+      font-size: 0.85rem;
+      margin-top: 8px;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
   <h1>マルチサイト一括リサーチツール</h1>
   <p class="small">
-    キーワードを1回入力して、複数サイト（eBay／ヤフオク／メルカリ／ラクマ／ヤフーショッピング／Amazon／Etsy）をまとめてリサーチするツールです。<br>
-    「美品（Mint）を付ける」をONにすると、eBayは <code>mint</code>、日本サイトは <code>美品</code> を末尾に付けて検索します。<br>
-    ※一部サイト（ヤフーショッピング／Amazon.co.jp／Amazon.com／Etsy）は、状態ワードを付けるとヒットが激減するため、あえて状態ワードを付けない仕様にしています。
+    キーワードを1回入力して、複数サイト（eBay／ヤフオク／メルカリ／ラクマ／ヤフーショッピング／Amazon／Etsy／Catawiki）をまとめてリサーチするツールです。<br>
+    状態（新品／美品／並品／訳あり／ジャンク）を選ぶと、<br>
+    ・eBayは英語状態（new / mint / exc / read / asis）<br>
+    ・ヤフオク／メルカリ／ラクマは日本語状態（新品・美品・並品・訳あり・ジャンク）<br>
+    を末尾に付けて検索します。<br>
+    ヤフーショッピング／Amazon.co.jp／Amazon.com／Etsy／Catawiki は、状態ワードを付けるとヒットが激減するため、あえて状態ワードなしの素のキーワードで検索します。
   </p>
 
   <div class="card">
@@ -82,31 +93,43 @@
     </div>
 
     <div style="margin-top: 12px;">
-      <label>
-        <input type="checkbox" id="checkMint" checked>
-        美品（Mint）を付ける
-      </label>
+      <div><strong>状態（ヤフオク・メルカリ・ラクマ・eBay に反映）</strong></div>
+      <label><input type="checkbox" id="cond_new"> 新品</label>
+      <label><input type="checkbox" id="cond_mint" checked> 美品</label>
+      <label><input type="checkbox" id="cond_exc"> 並品</label>
+      <label><input type="checkbox" id="cond_read"> 訳あり</label>
+      <label><input type="checkbox" id="cond_asis"> ジャンク</label>
       <div class="small">
-        ・ON：eBay →「 mint」、ヤフオク／メルカリ／ラクマ →「 美品」を末尾に付与。<br>
-        ・OFF：素のキーワードのみで検索。<br>
-        ・ヤフーショッピング／Amazon.co.jp／Amazon.com／Etsy は、美品モードONでも状態ワードを付けません。
+        ※ 何もチェックしない場合は、状態ワードなしで1本だけ検索します。<br>
+        ※ eBay：new / mint / exc / read / asis を付与。<br>
+        ※ ヤフーショッピング／Amazon／Etsy／Catawiki は状態ワードを付けません（ヒット減少回避のため）。
       </div>
     </div>
 
     <div style="margin-top: 12px;">
       <div><strong>検索するサイト</strong></div>
       <label><input type="checkbox" id="useEbay" checked> eBay</label>
-      <label><input type="checkbox" id="useYahu" checked> ヤフオク</label><br>
-      <label><input type="checkbox" id="useMercari"> メルカリ</label>
+      <label><input type="checkbox" id="useYahu" checked> ヤフオク</label>
+      <label><input type="checkbox" id="useMercari" checked> メルカリ</label><br>
       <label><input type="checkbox" id="useRakuma"> ラクマ</label><br>
       <label><input type="checkbox" id="useYahuShop"> ヤフーショッピング</label><br>
       <label><input type="checkbox" id="useAmaJP"> Amazon.co.jp</label>
       <label><input type="checkbox" id="useAmaUS"> Amazon.com</label><br>
       <label><input type="checkbox" id="useEtsy"> Etsy</label>
+      <label><input type="checkbox" id="useCata"> Catawiki</label>
 
       <div class="small" style="margin-top:4px;">
-        ※ブラウザのポップアップブロックが有効だと、複数タブがブロックされる場合があります。その際はアドレスバー付近の「ポップアップ許可」をオンにしてください。
+        ※ PCでもスマホでも、リンクは下部に一覧表示されます。<br>
+        ※ 必要に応じてコピーしてチャットワークやメモに貼り付けてご利用ください。
       </div>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <strong>オプション</strong><br>
+      <label>
+        <input type="checkbox" id="includeSheet" checked>
+        仕入れ価格決定シートをリンク一覧に含める
+      </label>
     </div>
 
     <button id="runBtn">検索</button>
@@ -118,21 +141,22 @@
   </div>
 
   <script>
-    function openInNewTab(url) {
-      window.open(url, "_blank");
-    }
-
     document.getElementById("runBtn").addEventListener("click", function () {
       const keywordInput = document.getElementById("keyword");
-      const keyword = keywordInput.value.trim();
+      const baseWord = keywordInput.value.trim();
 
-      if (!keyword) {
+      if (!baseWord) {
         alert("キーワードを入力してください。");
         keywordInput.focus();
         return;
       }
 
-      const checkMint = document.getElementById("checkMint").checked;
+      // 状態チェック
+      const condNew  = document.getElementById("cond_new").checked;
+      const condMint = document.getElementById("cond_mint").checked;
+      const condExc  = document.getElementById("cond_exc").checked;
+      const condRead = document.getElementById("cond_read").checked;
+      const condAsis = document.getElementById("cond_asis").checked;
 
       const useEbay    = document.getElementById("useEbay").checked;
       const useYahu    = document.getElementById("useYahu").checked;
@@ -142,156 +166,184 @@
       const useAmaJP   = document.getElementById("useAmaJP").checked;
       const useAmaUS   = document.getElementById("useAmaUS").checked;
       const useEtsy    = document.getElementById("useEtsy").checked;
+      const useCata    = document.getElementById("useCata").checked;
+
+      const includeSheet = document.getElementById("includeSheet").checked;
 
       if (!useEbay && !useYahu && !useMercari && !useRakuma &&
-          !useYahuShop && !useAmaJP && !useAmaUS && !useEtsy) {
+          !useYahuShop && !useAmaJP && !useAmaUS && !useEtsy && !useCata) {
         alert("少なくとも1つのサイトを選択してください。");
         return;
       }
 
-      // -------------------------------------------
-      // キーワードバリエーション（AHK版と同じロジック）
-      // -------------------------------------------
-      const plainWord = keyword; // 状態ワードなし
+      const hasCondition = condNew || condMint || condExc || condRead || condAsis;
 
-      let ebayWord, jpWord;
-      if (checkMint) {
-        // eBay用は " mint" を付与
-        ebayWord = keyword + " mint";
-        // 日本サイト用は「 美品」を付与
-        jpWord   = keyword + " 美品";
-      } else {
-        ebayWord = keyword;
-        jpWord   = keyword;
+      // 状態リスト（eBay用の英語・日本サイト用の日本語・ラベル）
+      const conds = [];
+      if (condNew) {
+        conds.push({ jp: "新品", en: "new", labelJP: "（新品）", labelEN: "（new）" });
+      }
+      if (condMint) {
+        conds.push({ jp: "美品", en: "mint", labelJP: "（美品）", labelEN: "（mint）" });
+      }
+      if (condExc) {
+        conds.push({ jp: "並品", en: "exc", labelJP: "（並品）", labelEN: "（exc）" });
+      }
+      if (condRead) {
+        conds.push({ jp: "訳あり", en: "read", labelJP: "（訳あり）", labelEN: "（read）" });
+      }
+      if (condAsis) {
+        conds.push({ jp: "ジャンク", en: "asis", labelJP: "（ジャンク）", labelEN: "（asis）" });
       }
 
-      const plainUrlWord = encodeURIComponent(plainWord);
-      const ebayUrlWord  = encodeURIComponent(ebayWord);
-      const jpUrlWord    = encodeURIComponent(jpWord);
+      const plainUrlWord = encodeURIComponent(baseWord);
 
-      const links = []; // {label, url} を貯める
+      const links = []; // {label, url}
 
-      // =========================
-      // eBay
-      // =========================
+      // --------------------
+      // eBay（SOLD・高い順）
+      // --------------------
       if (useEbay) {
-        // AHK版コメント：
-        // ★ eBayソールド高値順のテンプレURL（TESTWORD を残す）
         const baseEbay =
           "https://www.ebay.com/sch/i.html?_nkw=TESTWORD&_sacat=0&_from=R40&LH_Sold=1&LH_Complete=1&_sop=16";
-        const urlEbay = baseEbay.replace("TESTWORD", ebayUrlWord);
-        links.push({ label: "eBay（SOLD・高い順）", url: urlEbay });
+
+        if (hasCondition) {
+          conds.forEach(c => {
+            const word = encodeURIComponent(baseWord + " " + c.en);
+            const url = baseEbay.replace("TESTWORD", word);
+            links.push({ label: "eBay（SOLD・高い順）" + c.labelEN, url: url });
+          });
+        } else {
+          const word = encodeURIComponent(baseWord);
+          const url = baseEbay.replace("TESTWORD", word);
+          links.push({ label: "eBay（SOLD・高い順）", url: url });
+        }
       }
 
-      // =========================
-      // ヤフオク
-      // =========================
+      // --------------------
+      // ヤフオク（落札相場・高い順）
+      // --------------------
       if (useYahu) {
-        // AHK版コメント：
-        // ★ ヤフオク落札相場・高い順
-        //   → 美品モードONなら「キーワード + 美品」で検索
         const baseYahu =
           "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=TESTWORD&va=TESTWORD&b=1&n=100&select=2";
-        const urlYahu = baseYahu.replace(/TESTWORD/g, jpUrlWord);
-        links.push({ label: "ヤフオク落札相場（高い順）", url: urlYahu });
+
+        if (hasCondition) {
+          conds.forEach(c => {
+            const word = encodeURIComponent(baseWord + " " + c.jp);
+            const url = baseYahu.replace(/TESTWORD/g, word);
+            links.push({ label: "ヤフオク落札相場" + c.labelJP, url: url });
+          });
+        } else {
+          const word = encodeURIComponent(baseWord);
+          const url = baseYahu.replace(/TESTWORD/g, word);
+          links.push({ label: "ヤフオク落札相場", url: url });
+        }
       }
 
-      // =========================
-      // メルカリ
-      // =========================
+      // --------------------
+      // メルカリ（売り切れ・高い順）
+      // --------------------
       if (useMercari) {
-        // AHK版コメント：
-        // ★ メルカリ売り切れ（SOLD）・高い順
-        //   → 美品モードONなら「キーワード + 美品」
         const baseMercari =
           "https://jp.mercari.com/search?keyword=TESTWORD&status=sold_out%7Ctrading&sort=price&order=desc";
-        const urlMercari = baseMercari.replace("TESTWORD", jpUrlWord);
-        links.push({ label: "メルカリ（売り切れ・高い順）", url: urlMercari });
+
+        if (hasCondition) {
+          conds.forEach(c => {
+            const word = encodeURIComponent(baseWord + " " + c.jp);
+            const url = baseMercari.replace("TESTWORD", word);
+            links.push({ label: "メルカリ（売り切れ）" + c.labelJP, url: url });
+          });
+        } else {
+          const word = encodeURIComponent(baseWord);
+          const url = baseMercari.replace("TESTWORD", word);
+          links.push({ label: "メルカリ（売り切れ）", url: url });
+        }
       }
 
-      // =========================
-      // ラクマ
-      // =========================
+      // --------------------
+      // ラクマ（売り切れ・価格高い順）
+      // --------------------
       if (useRakuma) {
-        // AHK版コメント：
-        // ★ ラクマ売り切れ・価格高い順
-        //   → 美品モードONなら「キーワード + 美品」
         const baseRakuma =
           "https://fril.jp/s?order=desc&query=TESTWORD&sort=sell_price&transaction=soldout";
-        const urlRakuma = baseRakuma.replace("TESTWORD", jpUrlWord);
-        links.push({ label: "ラクマ（売り切れ・高い順）", url: urlRakuma });
+
+        if (hasCondition) {
+          conds.forEach(c => {
+            const word = encodeURIComponent(baseWord + " " + c.jp);
+            const url = baseRakuma.replace("TESTWORD", word);
+            links.push({ label: "ラクマ（売り切れ）" + c.labelJP, url: url });
+          });
+        } else {
+          const word = encodeURIComponent(baseWord);
+          const url = baseRakuma.replace("TESTWORD", word);
+          links.push({ label: "ラクマ（売り切れ）", url: url });
+        }
       }
 
-      // =========================
-      // ヤフーショッピング
-      // =========================
+      // --------------------
+      // ヤフーショッピング（状態ワードは付けない）
+      // --------------------
       if (useYahuShop) {
-        // AHK版コメント：
-        // ★ ヤフーショッピング検索
-        //   【仕様】美品モードがONでも「美品」は付けない。
-        //           状態ワードを入れるとヒットが激減するため、
-        //           あえて「素のキーワード（plainWord）」のみで検索。
         const baseYahuShop =
           "https://shopping.yahoo.co.jp/search?first=1&tab_ex=commerce&fr=shp-prop&mcr=61c1e36d2245f2f47a36cdc31b5de2df&ts=1764813874&sretry=1&p=TESTWORD&sc_i=shopping-pc-web-top--h_srch-kwd&area=11";
-        const urlYahuShop = baseYahuShop.replace(/TESTWORD/g, plainUrlWord);
-        links.push({ label: "ヤフーショッピング", url: urlYahuShop });
+        const url = baseYahuShop.replace(/TESTWORD/g, plainUrlWord);
+        links.push({ label: "ヤフーショッピング", url: url });
       }
 
-      // =========================
-      // Amazon.co.jp
-      // =========================
+      // --------------------
+      // Amazon.co.jp（状態ワードは付けない）
+      // --------------------
       if (useAmaJP) {
-        // AHK版コメント：
-        // ★ Amazon.co.jp 検索
-        //   【仕様】美品モードがONでも「美品」は付けない。
-        //           状態ワードを入れると検索結果が極端に減るため、
-        //           あえて「素のキーワード（plainWord）」で検索。
         const baseAmaJP =
           "https://www.amazon.co.jp/s?k=TESTWORD&__mk_ja_JP=%E3%82%AB%E3%82%BF%E3%82%AB%E3%83%8A&crid=3VVGYVWD090II&sprefix=TESTWORD%2Caps%2C184&ref=nb_sb_noss_1";
-        const urlAmaJP = baseAmaJP.replace(/TESTWORD/g, plainUrlWord);
-        links.push({ label: "Amazon.co.jp", url: urlAmaJP });
+        const url = baseAmaJP.replace(/TESTWORD/g, plainUrlWord);
+        links.push({ label: "Amazon.co.jp", url: url });
       }
 
-      // =========================
-      // Amazon.com
-      // =========================
+      // --------------------
+      // Amazon.com（状態ワードは付けない）
+      // --------------------
       if (useAmaUS) {
-        // AHK版コメント：
-        // ★ Amazon.com 検索
-        //   【仕様】美品モードがONでも "mint" は付けない。
-        //           "mint" を付けるとヒットが激減するため、
-        //           あえて「素のキーワード（plainWord）」で検索。
         const baseAmaUS =
           "https://www.amazon.com/s?k=TESTWORD&crid=311FN96333MS3&sprefix=TESTWORD+%2Caps%2C281&ref=nb_sb_noss_2";
-        const urlAmaUS = baseAmaUS.replace(/TESTWORD/g, plainUrlWord);
-        links.push({ label: "Amazon.com", url: urlAmaUS });
+        const url = baseAmaUS.replace(/TESTWORD/g, plainUrlWord);
+        links.push({ label: "Amazon.com", url: url });
       }
 
-      // =========================
-      // Etsy
-      // =========================
+      // --------------------
+      // Etsy（状態ワードは付けない）
+      // --------------------
       if (useEtsy) {
-        // AHK版コメント：
-        // ★ Etsy 検索
-        //   【仕様】美品モードがONでも "mint" は付けない。
-        //           状態ワードで絞りすぎると出品がほとんど出なくなるため、
-        //           あえて「素のキーワード（plainWord）」だけで検索。
         const baseEtsy =
           "https://www.etsy.com/jp/search?q=TESTWORD&order=price_desc";
-        const urlEtsy = baseEtsy.replace("TESTWORD", plainUrlWord);
-        links.push({ label: "Etsy（価格高い順）", url: urlEtsy });
+        const url = baseEtsy.replace("TESTWORD", plainUrlWord);
+        links.push({ label: "Etsy（価格高い順）", url: url });
       }
 
-      // -------- タブ自動オープン --------
-      links.forEach(link => {
-        openInNewTab(link.url);
-      });
+      // --------------------
+      // Catawiki（状態ワードは付けない仕様）
+      // --------------------
+      if (useCata) {
+        // 【仕様】状態ワードを付けるとヒットがかなり減る可能性があるため、
+        //         あえて素のキーワード（plainWord）のみで検索。
+        const baseCata = "https://www.catawiki.com/en/s?q=TESTWORD";
+        const url = baseCata.replace("TESTWORD", plainUrlWord);
+        links.push({ label: "Catawiki", url: url });
+      }
 
-      // -------- 下部にリンク一覧も表示 --------
-      renderLinks(links);
+      // --------------------
+      // 仕入れ価格決定シート（オプション）
+      // --------------------
+      if (includeSheet) {
+        const sheetUrl =
+          "https://docs.google.com/spreadsheets/d/1zfC-NxA6ILPZtrvN-ubw5LGsroYFbqy1AoN9jUAzEq0/edit?usp=sharing";
+        links.push({ label: "仕入れ価格決定シート", url: sheetUrl });
+      }
+
+      renderLinks(links, baseWord);
     });
 
-    function renderLinks(links) {
+    function renderLinks(links, keyword) {
       const resultDiv = document.getElementById("result");
       const resultLinks = document.getElementById("resultLinks");
 
@@ -301,6 +353,7 @@
         return;
       }
 
+      // 画面表示用リンク一覧
       let html = '<ul class="result-list">';
       links.forEach(link => {
         html += `
@@ -313,8 +366,49 @@
       });
       html += "</ul>";
 
+      // コピー用テキスト（先頭にキーワード）
+      let copyText = "";
+      copyText += `検索キーワード：${keyword}\n\n`;
+      links.forEach(link => {
+        copyText += `${link.label}\n${link.url}\n\n`;
+      });
+
+      html += `
+        <p style="margin-top:12px; font-weight:bold;">コピー用（チャットワークなどに保存したいとき）</p>
+        <p class="small">※ 「この結果をコピー」ボタンを押して、チャットワークやメモに貼り付けてください。</p>
+        <button type="button" id="copyBtn">この結果をコピー</button>
+        <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
+      `;
+
       resultLinks.innerHTML = html;
       resultDiv.style.display = "block";
+
+      const copyBtn = document.getElementById("copyBtn");
+      const copyArea = document.getElementById("copyArea");
+
+      if (copyBtn && copyArea) {
+        copyBtn.addEventListener("click", function () {
+          const text = copyArea.value;
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+              .then(() => {
+                alert("コピーしました。チャットワークやメモに貼り付けてください。");
+              })
+              .catch(() => {
+                copyArea.focus();
+                copyArea.select();
+                document.execCommand("copy");
+                alert("コピーしました。チャットワークやメモに貼り付けてください。");
+              });
+          } else {
+            copyArea.focus();
+            copyArea.select();
+            document.execCommand("copy");
+            alert("コピーしました。チャットワークやメモに貼り付けてください。");
+          }
+        });
+      }
     }
   </script>
 </body>
