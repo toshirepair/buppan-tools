@@ -156,30 +156,26 @@
   const resultDiv = document.getElementById("result");
   const resultLinks = document.getElementById("resultLinks");
 
-  // Googleレンズ（Googleアプリ）をできるだけ直接開く
+  // 簡易モバイル判定
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  // Googleアプリ or Googleレンズを開く
   if (openGoogleLensBtn) {
     openGoogleLensBtn.addEventListener("click", () => {
-      // iOS / Android の Googleアプリ向けの非公式スキーム
-      // （google://lens が知られている）
-      const lensSchemeUrl = "google://lens";
-      const fallbackUrl = "https://lens.google.com/";
+      if (isMobile) {
+        // ▼ スマホの場合：Googleアプリを直接開きにいく（できれば）
+        // iOS/Android の Googleアプリ向けの URLスキーム
+        // うまくいけば「Googleアプリを開く？」ダイアログ → アプリ起動
+        window.location.href = "google://";
 
-      // まずはアプリを開こうとする
-      // 成功すればこのページ自体が裏に回るので、下の setTimeout は実行されないケースが多い
-      window.location.href = lensSchemeUrl;
-
-      // もしスキームが使えない環境（PCブラウザなど）の場合は、
-      // 少し待ってから Web版のレンズページにフォールバック
-      setTimeout(() => {
-        // ここでは成功 / 失敗を厳密には判定できないので、
-        // 「開けなかったっぽい環境向けの保険」として考える
-        try {
-          // すでに別ページに遷移している場合は、このコード自体が動かないので問題なし
-          window.location.href = fallbackUrl;
-        } catch (e) {
-          // 何もしない（念のため）
-        }
-      }, 1200); // 1.2秒くらい待ってからフォールバック
+        // ※ ここは OS / ブラウザ依存:
+        // - 成功 → Googleアプリに切り替わる
+        // - 失敗 → 何も起きない（その場合はホーム画面からGoogleアプリを開いてください）
+      } else {
+        // ▼ PCの場合：GoogleレンズWeb版を新しいタブで開く
+        const lensWebUrl = "https://lens.google.com/";
+        window.open(lensWebUrl, "_blank", "noopener");
+      }
     });
   }
 
@@ -187,7 +183,7 @@
   buildLinksBtn.addEventListener("click", () => {
     const kw = searchKeywordInput.value.trim();
     if (!kw) {
-      alert("検索キーワードが空です。Googleレンズからコピーするか、手入力してください。");
+      alert("検索キーワードが空です。GoogleレンズやGoogleアプリからコピーするか、手入力してください。");
       searchKeywordInput.focus();
       return;
     }
