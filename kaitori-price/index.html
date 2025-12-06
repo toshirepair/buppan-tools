@@ -84,7 +84,12 @@
   </p>
 
   <div class="card">
+    <!-- ★ ここを追加：Googleレンズボタン -->
     <div>
+      <button type="button" id="openGoogleLensBtn">Googleレンズを開く（別タブ）</button>
+    </div>
+
+    <div style="margin-top: 12px;">
       <label for="model"><strong>型番（ベースキーワード）</strong></label>
       <input type="text" id="model" placeholder="例：Nikon D750 50mm f1.8 など">
     </div>
@@ -119,6 +124,14 @@
   </div>
 
   <script>
+    // ★ Googleレンズを別タブで開くボタン
+    const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
+    if (openGoogleLensBtn) {
+      openGoogleLensBtn.addEventListener("click", () => {
+        window.open("https://lens.google.com/", "_blank", "noopener");
+      });
+    }
+
     document.getElementById("runBtn").addEventListener("click", function () {
       const modelInput = document.getElementById("model");
       const baseWord = modelInput.value.trim();
