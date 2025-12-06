@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>カメラOCR → 相場リサーチリンク生成ツール（V1）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Tesseract.js（ブラウザOCRライブラリ）CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px;
+      line-height: 1.6;
+    }
+    h1 {
+      font-size: 1.3rem;
+      margin-bottom: 0.5rem;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+    label {
+      display: inline-block;
+      margin-right: 12px;
+      margin-bottom: 4px;
+    }
+    button {
+      padding: 8px 14px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border-radius: 6px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      margin-top: 8px;
+      margin-right: 4px;
+    }
+    button.secondary {
+      background: #6b7280;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: default;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    video {
+      width: 100%;
+      max-height: 320px;
+      background: #000;
+      border-radius: 8px;
+    }
+    .small {
+      font-size: 0.85rem;
+      color: #555;
+    }
+    .candidates {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .candidate-btn {
+      font-size: 0.8rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #2563eb;
+      background: #eff6ff;
+      color: #1d4ed8;
+      cursor: pointer;
+      max-width: 100%;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+    .candidate-btn:hover {
+      background: #dbeafe;
+    }
+    ul.result-list {
+      list-style: none;
+      padding-left: 0;
+      margin-top: 8px;
+    }
+    ul.result-list li {
+      margin-bottom: 10px;
+    }
+    a.result-link {
+      font-size: 0.95rem;
+      text-decoration: underline;
+      color: #2563eb;
+    }
+    textarea.copy-area {
+      width: 100%;
+      min-height: 120px;
+      box-sizing: border-box;
+      font-size: 0.85rem;
+      margin-top: 8px;
+      white-space: pre-wrap;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      background: #e5e7eb;
+      margin-left: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>カメラOCR → 相場リサーチリンク生成ツール（V1）</h1>
+  <p class="small">
+    店舗でカメラやレンズにスマホをかざして文字を読み取り、<br>
+    その場で eBay／ヤフオク／メルカリ の相場リサーチ用URLを作るツールです。<br>
+    ※ 通信はブラウザ内＋Tesseract.js（ブラウザOCR）で完結します。
+  </p>
+
+  <!-- ① カメラ起動＆OCR部分 -->
+  <div class="card">
+    <h2 style="font-size:1.05rem; margin-top:0;">1. カメラで文字を読み取る</h2>
+    <p class="small">
+      「カメラを起動」→ カメラやレンズの型番ラベルにピントを合わせてから、<br>
+      「このフレームから文字を読み取る」を押してください。
+    </p>
+
+    <div>
+      <button id="startCameraBtn">カメラを起動</button>
+      <button id="captureBtn" disabled>このフレームから文字を読み取る</button>
+      <span id="cameraStatus" class="small"></span>
+    </div>
+
+    <div style="margin-top:8px;">
+      <video id="video" autoplay playsinline></video>
+      <!-- キャプチャ用キャンバス（非表示） -->
+      <canvas id="captureCanvas" style="display:none;"></canvas>
+    </div>
+
+    <div id="ocrStatus" class="small" style="margin-top:8px; color:#2563eb;"></div>
+
+    <div style="margin-top:12px;">
+      <strong>OCR生テキスト（必要ならここからコピーしてもOK）</strong>
+      <textarea id="ocrRawText" class="copy-area" placeholder="ここにOCRのテキストが表示されます" readonly></textarea>
+    </div>
+
+    <div style="margin-top:12px;">
+      <strong>候補として使えそうな行（タップでキーワードに反映）</strong>
+      <div id="candidateContainer" class="candidates"></div>
+      <p class="small">
+        ※ 型番らしき行をタップすると、下の「検索キーワード」にセットされます。<br>
+        ※ 候補がイマイチなときは、手入力で修正してOKです。
+      </p>
+    </div>
+  </div>
+
+  <!-- ② キーワード確定＆相場リンク生成部分 -->
+  <div class="card">
+    <h2 style="font-size:1.05rem; margin-top:0;">2. 検索キーワード & サイト選択</h2>
+
+    <div>
+      <label for="searchKeyword"><strong>検索キーワード（最終的にこれで相場を見る）</strong></label>
+      <input type="text" id="searchKeyword" placeholder="例：Nikon AF-S NIKKOR 24-70mm f/2.8G ED など">
+      <p class="small">
+        上の候補ボタンをタップするとここに入ります。必要に応じて手で編集してください。
+      </p>
+    </div>
+
+    <div style="margin-top:12px;">
+      <div><strong>リサーチするサイト</strong></div>
+      <label><input type="checkbox" id="useEbay" checked> eBay<span class="badge">SOLD</span></label>
+      <label><input type="checkbox" id="useYahu" checked> ヤフオク<span class="badge">落札相場</span></label>
+      <label><input type="checkbox" id="useMercari" checked> メルカリ<span class="badge">売り切れ</span></label>
+      <p class="small">
+        まずは3サイトに絞っています。将来的にラクマやAmazonなども足すことも可能です。
+      </p>
+    </div>
+
+    <button id="buildLinksBtn">このキーワードで相場リサーチリンクを作る</button>
+  </div>
+
+  <!-- ③ 結果リンク＆コピー部分 -->
+  <div id="result" class="card" style="display:none; margin-top:16px;">
+    <strong>3. リンク一覧（スマホ／PC共通）</strong>
+    <div id="resultLinks" class="small" style="margin-top:8px;"></div>
+  </div>
+
+  <script>
+    const startCameraBtn = document.getElementById("startCameraBtn");
+    const captureBtn = document.getElementById("captureBtn");
+    const cameraStatus = document.getElementById("cameraStatus");
+    const ocrStatus = document.getElementById("ocrStatus");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("captureCanvas");
+    const ocrRawText = document.getElementById("ocrRawText");
+    const candidateContainer = document.getElementById("candidateContainer");
+    const searchKeywordInput = document.getElementById("searchKeyword");
+
+    let stream = null;
+
+    // カメラ起動
+    startCameraBtn.addEventListener("click", async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("このブラウザはカメラアクセスに対応していません。ChromeやSafariの最新版をお試しください。");
+        return;
+      }
+
+      cameraStatus.textContent = "カメラ起動中… 許可ダイアログが出たら「許可」を押してください。";
+      ocrStatus.textContent = "";
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" }
+          },
+          audio: false
+        });
+        video.srcObject = stream;
+        captureBtn.disabled = false;
+        cameraStatus.textContent = "カメラ起動中。ピントを合わせてから「このフレームから文字を読み取る」を押してください。";
+      } catch (err) {
+        console.error(err);
+        cameraStatus.textContent = "カメラを起動できませんでした。権限やHTTPS接続をご確認ください。";
+        captureBtn.disabled = true;
+      }
+    });
+
+    // フレームからOCR実行
+    captureBtn.addEventListener("click", async () => {
+      if (!video.srcObject) {
+        alert("先に「カメラを起動」を押してください。");
+        return;
+      }
+
+      ocrStatus.textContent = "フレームをキャプチャ中…";
+      ocrRawText.value = "";
+      candidateContainer.innerHTML = "";
+      searchKeywordInput.value = "";
+
+      // 動画の現在フレームをキャンバスに描画
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+
+      if (!width || !height) {
+        ocrStatus.textContent = "映像の取得に失敗しました。少し待ってから再度お試しください。";
+        return;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, width, height);
+
+      ocrStatus.textContent = "OCR解析中…（数秒〜十数秒かかることがあります）";
+
+      captureBtn.disabled = true;
+      startCameraBtn.disabled = true;
+
+      try {
+        const result = await Tesseract.recognize(canvas, "jpn+eng", {
+          logger: m => {
+            if (m.status === "recognizing text") {
+              const progress = m.progress ? Math.round(m.progress * 100) : 0;
+              ocrStatus.textContent = `OCR解析中… ${progress}%`;
+            }
+          }
+        });
+
+        const text = result.data.text || "";
+        ocrRawText.value = text;
+        ocrStatus.textContent = "OCR完了。候補を確認してください。";
+
+        buildCandidates(text);
+      } catch (err) {
+        console.error(err);
+        ocrStatus.textContent = "OCR中にエラーが発生しました。再度お試しください。";
+      } finally {
+        captureBtn.disabled = false;
+        startCameraBtn.disabled = false;
+      }
+    });
+
+    // OCR結果から候補を生成（行ごとに分割してボタン化）
+    function buildCandidates(text) {
+      candidateContainer.innerHTML = "";
+      if (!text.trim()) {
+        const info = document.createElement("div");
+        info.className = "small";
+        info.textContent = "テキストが検出されませんでした。カメラの距離やピント、明るさを調整して再度お試しください。";
+        candidateContainer.appendChild(info);
+        return;
+      }
+
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+
+      if (lines.length === 0) {
+        const info = document.createElement("div");
+        info.className = "small";
+        info.textContent = "候補となる行が見つかりませんでした。";
+        candidateContainer.appendChild(info);
+        return;
+      }
+
+      // シンプルに全部ボタン化（将来ここにフィルタロジックを足してもOK）
+      lines.forEach(line => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "candidate-btn";
+        btn.title = line;
+        btn.textContent = line;
+        btn.addEventListener("click", () => {
+          searchKeywordInput.value = line;
+          window.scrollTo({ top: searchKeywordInput.offsetTop - 80, behavior: "smooth" });
+        });
+        candidateContainer.appendChild(btn);
+      });
+
+      // 一番それっぽい1行目をとりあえずキーワードに入れておく（おまけ）
+      if (lines[0]) {
+        searchKeywordInput.value = lines[0];
+      }
+    }
+
+    // 相場リサーチリンク生成
+    const buildLinksBtn = document.getElementById("buildLinksBtn");
+    const resultDiv = document.getElementById("result");
+    const resultLinks = document.getElementById("resultLinks");
+
+    buildLinksBtn.addEventListener("click", () => {
+      const kw = searchKeywordInput.value.trim();
+      if (!kw) {
+        alert("検索キーワードが空です。候補から選ぶか、手入力してください。");
+        searchKeywordInput.focus();
+        return;
+      }
+
+      const useEbay = document.getElementById("useEbay").checked;
+      const useYahu = document.getElementById("useYahu").checked;
+      const useMercari = document.getElementById("useMercari").checked;
+
+      if (!useEbay && !useYahu && !useMercari) {
+        alert("少なくとも1つのサイトを選択してください。");
+        return;
+      }
+
+      const encoded = encodeURIComponent(kw);
+      const links = [];
+
+      // eBay SOLD（高い順）
+      if (useEbay) {
+        const baseEbay =
+          "https://www.ebay.com/sch/i.html?_nkw=TESTWORD&_sacat=0&_from=R40&LH_Sold=1&LH_Complete=1&_sop=16";
+        const urlEbay = baseEbay.replace("TESTWORD", encoded);
+        links.push({ label: "eBay（SOLD・高い順）", url: urlEbay });
+      }
+
+      // ヤフオク落札相場（高い順）
+      if (useYahu) {
+        const baseYahu =
+          "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=TESTWORD&va=TESTWORD&b=1&n=100&select=2";
+        const urlYahu = baseYahu.replace(/TESTWORD/g, encoded);
+        links.push({ label: "ヤフオク落札相場（高い順）", url: urlYahu });
+      }
+
+      // メルカリ売り切れ（高い順）
+      if (useMercari) {
+        const baseMercari =
+          "https://jp.mercari.com/search?keyword=TESTWORD&status=sold_out%7Ctrading&sort=price&order=desc";
+        const urlMercari = baseMercari.replace("TESTWORD", encoded);
+        links.push({ label: "メルカリ（売り切れ・高い順）", url: urlMercari });
+      }
+
+      renderLinks(links, kw);
+    });
+
+    function renderLinks(links, keyword) {
+      if (!links || links.length === 0) {
+        resultDiv.style.display = "none";
+        resultLinks.innerHTML = "";
+        return;
+      }
+
+      let html = '<ul class="result-list">';
+      links.forEach(link => {
+        html += `
+          <li>
+            <a class="result-link" href="${link.url}" target="_blank" rel="noopener noreferrer">
+              <strong>${link.label}</strong>
+            </a>
+          </li>
+        `;
+      });
+      html += "</ul>";
+
+      let copyText = "";
+      copyText += `検索キーワード：${keyword}\n\n`;
+      links.forEach(link => {
+        copyText += `${link.label}\n${link.url}\n\n`;
+      });
+
+      html += `
+        <p style="margin-top:12px; font-weight:bold;">コピー用（チャットワークやメモに保存したいとき）</p>
+        <p class="small">※ 「この結果をコピー」ボタンを押して、チャットワークやメモに貼り付けてください。</p>
+        <button type="button" id="copyBtn">この結果をコピー</button>
+        <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
+      `;
+
+      resultLinks.innerHTML = html;
+      resultDiv.style.display = "block";
+
+      const copyBtn = document.getElementById("copyBtn");
+      const copyArea = document.getElementById("copyArea");
+
+      if (copyBtn && copyArea) {
+        copyBtn.addEventListener("click", () => {
+          const text = copyArea.value;
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+              .then(() => {
+                alert("コピーしました。チャットワークやメモに貼り付けてください。");
+              })
+              .catch(() => {
+                copyArea.focus();
+                copyArea.select();
+                document.execCommand("copy");
+                alert("コピーしました。チャットワークやメモに貼り付けてください。");
+              });
+          } else {
+            copyArea.focus();
+            copyArea.select();
+            document.execCommand("copy");
+            alert("コピーしました。チャットワークやメモに貼り付けてください。");
+          }
+        });
+      }
+    }
+
+    // ページ離脱時にカメラ停止（おまけケア）
+    window.addEventListener("beforeunload", () => {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+      }
+    });
+  </script>
+</body>
+</html>
