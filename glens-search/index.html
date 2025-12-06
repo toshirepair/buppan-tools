@@ -149,132 +149,150 @@
     <strong>3. リンク一覧（スマホ／PC共通）</strong>
     <div id="resultLinks" class="small" style="margin-top:8px;"></div>
   </div>
+<script>
+  const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
+  const searchKeywordInput = document.getElementById("searchKeyword");
+  const buildLinksBtn = document.getElementById("buildLinksBtn");
+  const resultDiv = document.getElementById("result");
+  const resultLinks = document.getElementById("resultLinks");
 
-  <script>
-    const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
-    const searchKeywordInput = document.getElementById("searchKeyword");
-    const buildLinksBtn = document.getElementById("buildLinksBtn");
-    const resultDiv = document.getElementById("result");
-    const resultLinks = document.getElementById("resultLinks");
+  // Googleレンズ（Googleアプリ）をできるだけ直接開く
+  if (openGoogleLensBtn) {
+    openGoogleLensBtn.addEventListener("click", () => {
+      // iOS / Android の Googleアプリ向けの非公式スキーム
+      // （google://lens が知られている）
+      const lensSchemeUrl = "google://lens";
+      const fallbackUrl = "https://lens.google.com/";
 
-    // Googleレンズを別タブで開く
-    if (openGoogleLensBtn) {
-      openGoogleLensBtn.addEventListener("click", () => {
-        // 公開されているレンズのWeb版URLを別タブで開くだけ（規約的に安全な範囲）
-        window.open("https://lens.google.com/", "_blank", "noopener");
-      });
+      // まずはアプリを開こうとする
+      // 成功すればこのページ自体が裏に回るので、下の setTimeout は実行されないケースが多い
+      window.location.href = lensSchemeUrl;
+
+      // もしスキームが使えない環境（PCブラウザなど）の場合は、
+      // 少し待ってから Web版のレンズページにフォールバック
+      setTimeout(() => {
+        // ここでは成功 / 失敗を厳密には判定できないので、
+        // 「開けなかったっぽい環境向けの保険」として考える
+        try {
+          // すでに別ページに遷移している場合は、このコード自体が動かないので問題なし
+          window.location.href = fallbackUrl;
+        } catch (e) {
+          // 何もしない（念のため）
+        }
+      }, 1200); // 1.2秒くらい待ってからフォールバック
+    });
+  }
+
+  // 相場リサーチリンク生成
+  buildLinksBtn.addEventListener("click", () => {
+    const kw = searchKeywordInput.value.trim();
+    if (!kw) {
+      alert("検索キーワードが空です。Googleレンズからコピーするか、手入力してください。");
+      searchKeywordInput.focus();
+      return;
     }
 
-    // 相場リサーチリンク生成
-    buildLinksBtn.addEventListener("click", () => {
-      const kw = searchKeywordInput.value.trim();
-      if (!kw) {
-        alert("検索キーワードが空です。Googleレンズからコピーするか、手入力してください。");
-        searchKeywordInput.focus();
-        return;
-      }
+    const useEbay = document.getElementById("useEbay").checked;
+    const useYahu = document.getElementById("useYahu").checked;
+    const useMercari = document.getElementById("useMercari").checked;
 
-      const useEbay = document.getElementById("useEbay").checked;
-      const useYahu = document.getElementById("useYahu").checked;
-      const useMercari = document.getElementById("useMercari").checked;
+    if (!useEbay && !useYahu && !useMercari) {
+      alert("少なくとも1つのサイトを選択してください。");
+      return;
+    }
 
-      if (!useEbay && !useYahu && !useMercari) {
-        alert("少なくとも1つのサイトを選択してください。");
-        return;
-      }
+    const encoded = encodeURIComponent(kw);
+    const links = [];
 
-      const encoded = encodeURIComponent(kw);
-      const links = [];
+    // eBay SOLD（高い順）
+    if (useEbay) {
+      const baseEbay =
+        "https://www.ebay.com/sch/i.html?_nkw=TESTWORD&_sacat=0&_from=R40&LH_Sold=1&LH_Complete=1&_sop=16";
+      const urlEbay = baseEbay.replace("TESTWORD", encoded);
+      links.push({ label: "eBay（SOLD・高い順）", url: urlEbay });
+    }
 
-      // eBay SOLD（高い順）
-      if (useEbay) {
-        const baseEbay =
-          "https://www.ebay.com/sch/i.html?_nkw=TESTWORD&_sacat=0&_from=R40&LH_Sold=1&LH_Complete=1&_sop=16";
-        const urlEbay = baseEbay.replace("TESTWORD", encoded);
-        links.push({ label: "eBay（SOLD・高い順）", url: urlEbay });
-      }
+    // ヤフオク落札相場（高い順）
+    if (useYahu) {
+      const baseYahu =
+        "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=TESTWORD&va=TESTWORD&b=1&n=100&select=2";
+      const urlYahu = baseYahu.replace(/TESTWORD/g, encoded);
+      links.push({ label: "ヤフオク落札相場（高い順）", url: urlYahu });
+    }
 
-      // ヤフオク落札相場（高い順）
-      if (useYahu) {
-        const baseYahu =
-          "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=TESTWORD&va=TESTWORD&b=1&n=100&select=2";
-        const urlYahu = baseYahu.replace(/TESTWORD/g, encoded);
-        links.push({ label: "ヤフオク落札相場（高い順）", url: urlYahu });
-      }
+    // メルカリ売り切れ（高い順）
+    if (useMercari) {
+      const baseMercari =
+        "https://jp.mercari.com/search?keyword=TESTWORD&status=sold_out%7Ctrading&sort=price&order=desc";
+      const urlMercari = baseMercari.replace("TESTWORD", encoded);
+      links.push({ label: "メルカリ（売り切れ・高い順）", url: urlMercari });
+    }
 
-      // メルカリ売り切れ（高い順）
-      if (useMercari) {
-        const baseMercari =
-          "https://jp.mercari.com/search?keyword=TESTWORD&status=sold_out%7Ctrading&sort=price&order=desc";
-        const urlMercari = baseMercari.replace("TESTWORD", encoded);
-        links.push({ label: "メルカリ（売り切れ・高い順）", url: urlMercari });
-      }
+    renderLinks(links, kw);
+  });
 
-      renderLinks(links, kw);
+  function renderLinks(links, keyword) {
+    if (!links || links.length === 0) {
+      resultDiv.style.display = "none";
+      resultLinks.innerHTML = "";
+      return;
+    }
+
+    let html = '<ul class="result-list">';
+    links.forEach(link => {
+      html += `
+        <li>
+          <a class="result-link" href="${link.url}" target="_blank" rel="noopener noreferrer">
+            <strong>${link.label}</strong>
+          </a>
+        </li>
+      `;
+    });
+    html += "</ul>";
+
+    let copyText = "";
+    copyText += `検索キーワード：${keyword}\n\n`;
+    links.forEach(link => {
+      copyText += `${link.label}\n${link.url}\n\n`;
     });
 
-    function renderLinks(links, keyword) {
-      if (!links || links.length === 0) {
-        resultDiv.style.display = "none";
-        resultLinks.innerHTML = "";
-        return;
-      }
+    html += `
+      <p style="margin-top:12px; font-weight:bold;">コピー用（チャットワークやメモに保存したいとき）</p>
+      <p class="small">※ 「この結果をコピー」ボタンを押して、チャットワークやメモに貼り付けてください。</p>
+      <button type="button" id="copyBtn">この結果をコピー</button>
+      <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
+    `;
 
-      let html = '<ul class="result-list">';
-      links.forEach(link => {
-        html += `
-          <li>
-            <a class="result-link" href="${link.url}" target="_blank" rel="noopener noreferrer">
-              <strong>${link.label}</strong>
-            </a>
-          </li>
-        `;
+    resultLinks.innerHTML = html;
+    resultDiv.style.display = "block";
+
+    const copyBtn = document.getElementById("copyBtn");
+    const copyArea = document.getElementById("copyArea");
+
+    if (copyBtn && copyArea) {
+      copyBtn.addEventListener("click", () => {
+        const text = copyArea.value;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text)
+            .then(() => {
+              alert("コピーしました。チャットワークやメモに貼り付けてください。");
+            })
+            .catch(() => {
+              copyArea.focus();
+              copyArea.select();
+              document.execCommand("copy");
+              alert("コピーしました。チャットワークやメモに貼り付けてください。");
+            });
+        } else {
+          copyArea.focus();
+          copyArea.select();
+          document.execCommand("copy");
+          alert("コピーしました。チャットワークやメモに貼り付けてください。");
+        }
       });
-      html += "</ul>";
-
-      let copyText = "";
-      copyText += `検索キーワード：${keyword}\n\n`;
-      links.forEach(link => {
-        copyText += `${link.label}\n${link.url}\n\n`;
-      });
-
-      html += `
-        <p style="margin-top:12px; font-weight:bold;">コピー用（チャットワークやメモに保存したいとき）</p>
-        <p class="small">※ 「この結果をコピー」ボタンを押して、チャットワークやメモに貼り付けてください。</p>
-        <button type="button" id="copyBtn">この結果をコピー</button>
-        <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
-      `;
-
-      resultLinks.innerHTML = html;
-      resultDiv.style.display = "block";
-
-      const copyBtn = document.getElementById("copyBtn");
-      const copyArea = document.getElementById("copyArea");
-
-      if (copyBtn && copyArea) {
-        copyBtn.addEventListener("click", () => {
-          const text = copyArea.value;
-
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text)
-              .then(() => {
-                alert("コピーしました。チャットワークやメモに貼り付けてください。");
-              })
-              .catch(() => {
-                copyArea.focus();
-                copyArea.select();
-                document.execCommand("copy");
-                alert("コピーしました。チャットワークやメモに貼り付けてください。");
-              });
-          } else {
-            copyArea.focus();
-            copyArea.select();
-            document.execCommand("copy");
-            alert("コピーしました。チャットワークやメモに貼り付けてください。");
-          }
-        });
-      }
     }
-  </script>
+  }
+</script>
 </body>
 </html>
