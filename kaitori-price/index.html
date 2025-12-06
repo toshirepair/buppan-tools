@@ -86,7 +86,10 @@
   <div class="card">
     <!-- ★ ここを追加：Googleレンズボタン -->
     <div>
-      <button type="button" id="openGoogleLensBtn">Googleレンズを開く（別タブ）</button>
+      <button type="button" id="openGoogleLensBtn" 
+  style="background:#6b7280; color:#fff; padding:10px 18px; border-radius:6px; border:none; cursor:pointer;">
+  Googleレンズを開く
+</button>
     </div>
 
     <div style="margin-top: 12px;">
@@ -125,12 +128,34 @@
 
   <script>
     // ★ Googleレンズを別タブで開くボタン
-    const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
-    if (openGoogleLensBtn) {
-      openGoogleLensBtn.addEventListener("click", () => {
-        window.open("https://lens.google.com/", "_blank", "noopener");
-      });
+const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
+
+if (openGoogleLensBtn) {
+  openGoogleLensBtn.addEventListener("click", () => {
+    const ua = navigator.userAgent.toLowerCase();
+    const isMobile = /iphone|ipad|ipod|android/.test(ua);
+    const isIOS = /iphone|ipad|ipod/.test(ua);
+
+    // PC
+    if (!isMobile) {
+      window.open("https://lens.google.com/", "_blank", "noopener");
+      return;
     }
+
+    // Android → 新しいタブで Lens Web、またはアプリ起動が成功するケースあり
+    if (!isIOS) {
+      window.open("https://lens.google.com/", "_blank", "noopener");
+      return;
+    }
+
+    // iPhone（Safari/Chrome 共通） → 可能な最短ルート：Googleアプリ起動の試行
+    // ここが iOS でできる最大のショートカット
+    window.location.href = "google://";
+
+    // ※ iOS は App起動＝別タブという挙動はできない（仕様）
+  });
+}
+
 
     document.getElementById("runBtn").addEventListener("click", function () {
       const modelInput = document.getElementById("model");
