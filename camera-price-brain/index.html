@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>カメラ売上分析ツール（自分データ版 v1 + 別名マスタ対応）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f5f5f5;
+      color: #222;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 16px;
+      margin-top: 24px;
+      margin-bottom: 8px;
+    }
+    .section {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    label {
+      display: inline-block;
+      margin-right: 8px;
+      font-size: 13px;
+    }
+    input[type="number"], input[type="text"] {
+      padding: 4px 6px;
+      font-size: 13px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      width: 100px;
+    }
+    input[type="file"] {
+      font-size: 13px;
+    }
+    button {
+      padding: 6px 12px;
+      font-size: 13px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      background: #2563eb;
+      color: #fff;
+      margin-top: 8px;
+    }
+    button.secondary {
+      background: #6b7280;
+    }
+    button.small {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 4px 6px;
+      text-align: right;
+    }
+    th {
+      background: #f3f4f6;
+      text-align: center;
+    }
+    .flex-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .flex-row > div {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card-header {
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-body {
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      margin-left: 4px;
+    }
+    .badge.HIGH { background: #bbf7d0; }
+    .badge.MID { background: #facc15; }
+    .badge.LOW { background: #fecaca; }
+    .muted {
+      color: #6b7280;
+    }
+    .highlight {
+      font-weight: 600;
+      color: #2563eb;
+    }
+    .cards-container {
+      margin-top: 8px;
+    }
+    .model-group-title {
+      font-weight: 600;
+      margin: 12px 0 4px;
+      font-size: 13px;
+    }
+    .detail-toggle {
+      font-size: 11px;
+      color: #2563eb;
+      cursor: pointer;
+      margin-top: 4px;
+      display: inline-block;
+    }
+    .detail-content {
+      display: none;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px dashed #e5e7eb;
+      font-size: 11px;
+    }
+    .pill-input {
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      font-size: 12px;
+      flex: 1;
+      min-width: 140px;
+    }
+    @media (max-width: 600px) {
+      body { padding: 8px; }
+      .section { padding: 10px; }
+      .card { padding: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>カメラ売上分析ツール（自分データ版 v1 + 別名マスタ対応）</h1>
+
+  <!-- 設定セクション -->
+  <div class="section">
+    <h2>① 手数料 & 利益設定</h2>
+    <p style="font-size:12px;">
+      ここで eBay / Catawiki の手数料率、および売価レンジごとの固定利益を設定します。<br>
+      入金想定値 ＝ 売価 × (1 − 手数料率)、仕入上限目安 ＝ 入金中央値 − 固定利益 で計算します。
+    </p>
+
+    <h3 style="font-size:13px;margin-top:8px;">■ プラットフォーム別 手数料率（%）</h3>
+    <div class="flex-row">
+      <div>
+        <label for="fee-ebay">eBay:</label>
+        <input type="number" id="fee-ebay" value="13" step="0.1" />
+      </div>
+      <div>
+        <label for="fee-catawiki">Catawiki:</label>
+        <input type="number" id="fee-catawiki" value="15" step="0.1" />
+      </div>
+      <div>
+        <label for="fee-default">その他:</label>
+        <input type="number" id="fee-default" value="10" step="0.1" />
+      </div>
+    </div>
+
+    <h3 style="font-size:13px;margin-top:12px;">■ 売価レンジ別 固定利益（円）</h3>
+    <p style="font-size:11px;" class="muted">
+      例）売価 10,000〜30,000円 → 利益 5,000円、100,000〜120,000円 → 利益 10,000円 など。
+    </p>
+    <table id="profit-rules-table">
+      <thead>
+        <tr>
+          <th>売価下限</th>
+          <th>売価上限</th>
+          <th>固定利益</th>
+          <th>削除</th>
+        </tr>
+      </thead>
+      <tbody id="profit-rules-body">
+        <tr>
+          <td><input type="number" value="10000" /></td>
+          <td><input type="number" value="30000" /></td>
+          <td><input type="number" value="5000" /></td>
+          <td><button class="small secondary" onclick="removeRuleRow(this)">×</button></td>
+        </tr>
+        <tr>
+          <td><input type="number" value="100000" /></td>
+          <td><input type="number" value="120000" /></td>
+          <td><input type="number" value="10000" /></td>
+          <td><button class="small secondary" onclick="removeRuleRow(this)">×</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <button class="small secondary" onclick="addRuleRow()">＋ 行を追加</button>
+  </div>
+
+  <!-- 別名マスタ読み込みセクション -->
+  <div class="section">
+    <h2>② 別名マスタCSVを読み込む（型番名寄せ用）</h2>
+    <p style="font-size:12px;">
+      別名マスタCSVを読み込むと、型番の名寄せに利用できます。<br>
+      想定フォーマット：<code>before,after</code> の2列（1行目はヘッダー推奨）。
+    </p>
+    <p style="font-size:11px;" class="muted">
+      例）<br>
+      before,after<br>
+      NIKON 50MM F/1.4 AI-S,NIKON 50MM F1.4 AIS<br>
+      SD1300 IS,CANON IXY 200F
+    </p>
+    <input type="file" id="alias-file" accept=".csv" />
+    <button class="small secondary" onclick="handleAliasFile()">別名マスタを読み込む</button>
+    <p id="alias-status" style="font-size:12px;margin-top:8px;" class="muted"></p>
+  </div>
+
+  <!-- データ読み込みセクション -->
+  <div class="section">
+    <h2>③ CSVデータを読み込む（自分の売上データ）</h2>
+    <p style="font-size:12px;">
+      想定ヘッダー：<code>title, site, sold_price, sold_date, purchase_price, purchase_date</code><br>
+      日付は <code>YYYY-MM-DD</code> 形式推奨です。
+    </p>
+    <input type="file" id="csv-file" accept=".csv" />
+    <button onclick="handleFile()">読み込んで分析する</button>
+    <p id="status" style="font-size:12px;margin-top:8px;" class="muted"></p>
+  </div>
+
+  <!-- フィルタ & 結果表示 -->
+  <div class="section">
+    <h2>④ 分析結果</h2>
+    <div class="flex-row" style="margin-bottom:8px;">
+      <input
+        type="text"
+        id="filter-input"
+        class="pill-input"
+        placeholder="型番やキーワードでフィルタ（例: NIKON 50mm）"
+        oninput="renderCards()"
+      />
+      <button class="small secondary" onclick="clearFilter()">フィルタ解除</button>
+    </div>
+    <div id="results" class="cards-container"></div>
+  </div>
+
+  <script>
+    // ---------- グローバル ----------
+    let groupedResults = [];   // 分析結果（表示用）
+    let aliasMap = {};         // 別名マスタ（before → after）
+
+    // ---------- ユーティリティ ----------
+
+    function parseCSV(text) {
+      const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+      if (lines.length < 1) return [];
+      const header = lines[0].split(",").map(h => h.trim());
+      const bodyLines = lines.slice(1);
+      // ヘッダーなしCSVにも対応したい場合はここを調整
+      return bodyLines.map(line => {
+        const cols = line.split(",");
+        const obj = {};
+        header.forEach((h, i) => {
+          obj[h] = (cols[i] || "").trim();
+        });
+        return obj;
+      });
+    }
+
+    function toNumber(v) {
+      if (v === null || v === undefined) return null;
+      const n = Number(String(v).replace(/,/g, ""));
+      return isNaN(n) ? null : n;
+    }
+
+    function parseDate(v) {
+      if (!v) return null;
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function median(arr) {
+      const vals = arr.filter(v => typeof v === "number" && !isNaN(v)).sort((a,b) => a-b);
+      const len = vals.length;
+      if (!len) return null;
+      const mid = Math.floor(len / 2);
+      if (len % 2 === 0) {
+        return (vals[mid - 1] + vals[mid]) / 2;
+      } else {
+        return vals[mid];
+      }
+    }
+
+    function formatYen(n) {
+      if (n === null || n === undefined || isNaN(n)) return "–";
+      return "¥" + Math.round(n).toLocaleString();
+    }
+
+    function formatDate(d) {
+      if (!d || isNaN(d.getTime())) return "–";
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function diffMonths(fromDate, toDate) {
+      const ms = toDate.getTime() - fromDate.getTime();
+      const days = ms / (1000 * 60 * 60 * 24);
+      return days / 30; // ざっくり
+    }
+
+    function normalizeTitle(raw) {
+      if (!raw) return "";
+      let t = raw.toUpperCase();
+      t = t.replace(/\s+/g, " ").trim();
+      return t;
+    }
+
+    // 条件判定（NEAR MINT を先に）
+    function detectCondition(title) {
+      const t = normalizeTitle(title);
+      if (t.includes("NEAR MINT")) return "NEAR MINT";
+      if (t.includes("MINT")) return "MINT";
+      if (t.includes("EXC++++") || t.includes("EXC+++")) return "EXC++++";
+      if (t.includes("EXC++") || t.includes("EXC+")) return "EXC++";
+      if (t.includes("EXC")) return "EXC";
+      if (t.includes("JUNK")) return "JUNK";
+      return "UNKNOWN";
+    }
+
+    function detectBox(title) {
+      const t = normalizeTitle(title);
+      if (t.includes("BOX") || t.includes("BOXED") || t.includes("元箱")) return true;
+      return false;
+    }
+
+    // 型番の正規化 + 別名マスタによる名寄せ
+    function extractModelKey(title) {
+      let t = normalizeTitle(title);
+
+      // 条件・箱ワードを削除
+      t = t
+        .replace(/NEAR MINT/g, "")
+        .replace(/MINT/g, "")
+        .replace(/EXC\+*\+*/g, "")
+        .replace(/JUNK/g, "")
+        .replace(/BOXED/g, "")
+        .replace(/BOX/g, "")
+        .replace(/元箱/g, "");
+
+      // F値表記 F/1.4 → F1.4 に統一
+      t = t.replace(/F\/([0-9.]+)/g, "F$1");
+
+      // AI-S → AIS に統一
+      t = t.replace(/\bAI\-S\b/g, "AIS");
+
+      // 余計なスペース整形
+      t = t.replace(/\s+/g, " ").trim();
+
+      // 別名マスタがあれば上書き
+      if (aliasMap && aliasMap[t]) {
+        return aliasMap[t];
+      }
+
+      return t;
+    }
+
+    // 手数料率取得
+    function getFeeRate(siteRaw) {
+      const site = (siteRaw || "").toUpperCase();
+      const ebay = toNumber(document.getElementById("fee-ebay").value) || 0;
+      const cata = toNumber(document.getElementById("fee-catawiki").value) || 0;
+      const def = toNumber(document.getElementById("fee-default").value) || 0;
+      if (site.includes("EBAY")) return ebay / 100;
+      if (site.includes("CATAWIKI")) return cata / 100;
+      return def / 100;
+    }
+
+    // 固定利益ルール一覧取得
+    function getProfitRules() {
+      const tbody = document.getElementById("profit-rules-body");
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      const rules = rows.map(row => {
+        const tds = row.querySelectorAll("td");
+        const minP = toNumber(tds[0].querySelector("input").value);
+        const maxP = toNumber(tds[1].querySelector("input").value);
+        const prof = toNumber(tds[2].querySelector("input").value);
+        return { minPrice: minP, maxPrice: maxP, profit: prof };
+      }).filter(r => r.minPrice !== null && r.maxPrice !== null && r.profit !== null);
+      return rules;
+    }
+
+    function chooseTargetProfit(soldMedian) {
+      const rules = getProfitRules();
+      if (soldMedian === null) return null;
+      for (const r of rules) {
+        if (soldMedian >= r.minPrice && soldMedian <= r.maxPrice) {
+          return r.profit;
+        }
+      }
+      // 該当レンジがない場合のデフォルト
+      return 5000;
+    }
+
+    function getConfidence(lastDate) {
+      if (!lastDate || isNaN(lastDate.getTime())) return { level: "LOW", months: null };
+      const now = new Date();
+      const months = diffMonths(lastDate, now);
+      let level = "LOW";
+      if (months <= 6) level = "HIGH";
+      else if (months <= 12) level = "MID";
+      else level = "LOW";
+      return { level, months };
+    }
+
+    // ---------- 利益ルール行操作 ----------
+
+    function addRuleRow() {
+      const tbody = document.getElementById("profit-rules-body");
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input type="number" value="0" /></td>
+        <td><input type="number" value="0" /></td>
+        <td><input type="number" value="0" /></td>
+        <td><button class="small secondary" onclick="removeRuleRow(this)">×</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function removeRuleRow(btn) {
+      const tr = btn.closest("tr");
+      tr.parentNode.removeChild(tr);
+    }
+
+    // ---------- 別名マスタ読み込み ----------
+
+    function handleAliasFile() {
+      const input = document.getElementById("alias-file");
+      const file = input.files[0];
+      const statusEl = document.getElementById("alias-status");
+      if (!file) {
+        statusEl.textContent = "別名マスタCSVファイルを選択してください。";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const text = e.target.result;
+          // シンプルに parseCSV を利用（before,after ヘッダー前提）
+          const rows = parseCSV(text);
+          const map = {};
+          rows.forEach(r => {
+            if (!("before" in r) || !("after" in r)) return;
+            const beforeNorm = normalizeTitle(r.before || "");
+            const afterNorm  = normalizeTitle(r.after || "");
+            if (!beforeNorm || !afterNorm) return;
+            map[beforeNorm] = afterNorm;
+          });
+          aliasMap = map;
+          const count = Object.keys(aliasMap).length;
+          statusEl.textContent = `別名マスタを読み込みました。登録件数: ${count} 件`;
+        } catch (err) {
+          console.error(err);
+          statusEl.textContent = "別名マスタの読み込み中にエラーが発生しました。";
+        }
+      };
+      reader.readAsText(file, "UTF-8");
+    }
+
+    // ---------- メイン処理（自分データCSV） ----------
+
+    function handleFile() {
+      const input = document.getElementById("csv-file");
+      const file = input.files[0];
+      const statusEl = document.getElementById("status");
+      const resultsEl = document.getElementById("results");
+      resultsEl.innerHTML = "";
+      if (!file) {
+        statusEl.textContent = "CSVファイルを選択してください。";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const text = e.target.result;
+          const rows = parseCSV(text);
+          if (!rows.length) {
+            statusEl.textContent = "有効な行がありませんでした。";
+            return;
+          }
+          statusEl.textContent = `${rows.length}件のレコードを読み込みました。分析中…`;
+          const processed = analyzeRows(rows);
+          groupedResults = processed;
+          statusEl.textContent = `${rows.length}件を分析しました。グループ数: ${groupedResults.length}`;
+          renderCards();
+        } catch (err) {
+          console.error(err);
+          statusEl.textContent = "解析中にエラーが発生しました。コンソールを確認してください。";
+        }
+      };
+      reader.readAsText(file, "UTF-8");
+    }
+
+    function analyzeRows(rows) {
+      // 1行ごとに型を整える
+      const records = rows.map(r => {
+        const title = r.title || "";
+        const site = r.site || "";
+        const soldPrice = toNumber(r.sold_price);
+        const soldDate = parseDate(r.sold_date);
+        const purchasePrice = toNumber(r.purchase_price);
+        const purchaseDate = parseDate(r.purchase_date);
+
+        const cond = detectCondition(title);
+        const hasBox = detectBox(title);
+        const modelKey = extractModelKey(title);
+        const feeRate = getFeeRate(site);
+        const netAmount = soldPrice !== null ? soldPrice * (1 - feeRate) : null;
+        let turnoverDays = null;
+        if (soldDate && purchaseDate) {
+          const diffMs = soldDate.getTime() - purchaseDate.getTime();
+          turnoverDays = diffMs / (1000 * 60 * 60 * 24);
+        }
+
+        return {
+          rawTitle: title,
+          site,
+          soldPrice,
+          soldDate,
+          purchasePrice,
+          purchaseDate,
+          condition: cond,
+          hasBox,
+          modelKey,
+          feeRate,
+          netAmount,
+          turnoverDays
+        };
+      }).filter(r => r.soldPrice !== null && r.soldDate); // 売価と売日が無いものは除外
+
+      // グルーピング： site + modelKey + condition + hasBox
+      const groupsMap = new Map();
+      for (const rec of records) {
+        const key = [
+          rec.site.toUpperCase(),
+          rec.modelKey,
+          rec.condition,
+          rec.hasBox ? "BOX" : "NOBOX"
+        ].join("||");
+        if (!groupsMap.has(key)) {
+          groupsMap.set(key, []);
+        }
+        groupsMap.get(key).push(rec);
+      }
+
+      const results = [];
+      groupsMap.forEach((list, key) => {
+        const [siteU, modelKey, cond, boxCode] = key.split("||");
+        const soldPrices = list.map(r => r.soldPrice).filter(v => v !== null);
+        const netAmounts = list.map(r => r.netAmount).filter(v => v !== null);
+        const profits = list
+          .map(r => (r.purchasePrice !== null && r.netAmount !== null ? r.netAmount - r.purchasePrice : null))
+          .filter(v => v !== null);
+        const turnovers = list
+          .map(r => r.turnoverDays)
+          .filter(v => v !== null);
+
+        const soldMedian = median(soldPrices);
+        const netMedian = median(netAmounts);
+        const profitMedian = median(profits);
+        const turnoverMedian = median(turnovers);
+
+        // 最終更新日は「最後に売れた日」
+        const lastSold = list
+          .map(r => r.soldDate)
+          .filter(d => d)
+          .sort((a,b) => b - a)[0] || null;
+        const conf = getConfidence(lastSold);
+
+        // 利益設定に基づく仕入上限
+        const targetProfit = chooseTargetProfit(soldMedian);
+        let purchaseLimit = null;
+        if (netMedian !== null && targetProfit !== null) {
+          purchaseLimit = netMedian - targetProfit;
+        }
+
+        results.push({
+          site: siteU,
+          modelKey,
+          condition: cond,
+          hasBox: boxCode === "BOX",
+          count: list.length,
+          soldMedian,
+          netMedian,
+          profitMedian,
+          turnoverMedian,
+          lastSold,
+          confidence: conf.level,
+          purchaseLimit
+        });
+      });
+
+      // モデル名でソート（ざっくり）
+      results.sort((a,b) => a.modelKey.localeCompare(b.modelKey));
+      return results;
+    }
+
+    function renderCards() {
+      const container = document.getElementById("results");
+      container.innerHTML = "";
+      if (!groupedResults.length) {
+        container.innerHTML = '<p class="muted" style="font-size:12px;">まだデータがありません。CSVを読み込んでください。</p>';
+        return;
+      }
+      const filterText = (document.getElementById("filter-input").value || "").toUpperCase().trim();
+
+      // modelKeyごとにグループ化（表示まとめ用）
+      const byModel = new Map();
+      for (const g of groupedResults) {
+        if (filterText && !g.modelKey.toUpperCase().includes(filterText)) continue;
+        if (!byModel.has(g.modelKey)) byModel.set(g.modelKey, []);
+        byModel.get(g.modelKey).push(g);
+      }
+
+      if (!byModel.size) {
+        container.innerHTML = '<p class="muted" style="font-size:12px;">条件に一致するデータがありません。</p>';
+        return;
+      }
+
+      byModel.forEach((list, modelKey) => {
+        const titleDiv = document.createElement("div");
+        titleDiv.className = "model-group-title";
+        titleDiv.textContent = modelKey || "(モデル名不明)";
+        container.appendChild(titleDiv);
+
+        list.forEach((g) => {
+          const card = document.createElement("div");
+          card.className = "card";
+
+          const header = document.createElement("div");
+          header.className = "card-header";
+          const condText = `${g.site} / ${g.condition}${g.hasBox ? " / BOXあり" : " / BOXなし"}`;
+          header.innerHTML = `
+            <span>${condText}</span>
+            <span class="badge ${g.confidence}">${g.confidence}</span>
+          `;
+          card.appendChild(header);
+
+          const body = document.createElement("div");
+          body.className = "card-body";
+
+          body.innerHTML = `
+            <div><b>自分売価中央値</b>：${formatYen(g.soldMedian)}（${g.count}件）</div>
+            <div>入金中央値　　　：${formatYen(g.netMedian)}</div>
+            <div>利益中央値　　　：${g.profitMedian !== null ? formatYen(g.profitMedian) : "–"}</div>
+            <div>回転率中央値　　：${g.turnoverMedian !== null ? Math.round(g.turnoverMedian) + "日" : "–"}</div>
+            <div>最終更新　　　　：${formatDate(g.lastSold)}</div>
+            <div>信頼度　　　　　：<span class="badge ${g.confidence}">${g.confidence}</span></div>
+            <div style="margin-top:4px;" class="highlight">▶ 仕入上限目安 ：${g.purchaseLimit !== null ? formatYen(g.purchaseLimit) : "–"}</div>
+          `;
+
+          const detailToggle = document.createElement("span");
+          detailToggle.className = "detail-toggle";
+          detailToggle.textContent = "詳細（平均・最高・最安など）を見る ▽";
+          const detailContent = document.createElement("div");
+          detailContent.className = "detail-content";
+          detailContent.textContent = "※このバージョンでは自分データの中央値ベースのみ。市場データ追加時にここに平均・最高・最安を出す想定です。";
+
+          detailToggle.addEventListener("click", () => {
+            const visible = detailContent.style.display === "block";
+            detailContent.style.display = visible ? "none" : "block";
+            detailToggle.textContent = visible
+              ? "詳細（平均・最高・最安など）を見る ▽"
+              : "詳細を閉じる ▲";
+          });
+
+          body.appendChild(detailToggle);
+          body.appendChild(detailContent);
+
+          card.appendChild(body);
+          container.appendChild(card);
+        });
+      });
+    }
+
+    function clearFilter() {
+      document.getElementById("filter-input").value = "";
+      renderCards();
+    }
+  </script>
+</body>
+</html>
