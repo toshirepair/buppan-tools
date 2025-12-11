@@ -79,17 +79,17 @@
   <h1>買取査定ツール（Web版）</h1>
   <p class="small">
     型番を入れて「検索開始」を押すと、<br>
-    Google（買取価格）、カメラのキタムラ買取、マップカメラ買取、ヤフオク落札相場、eBay SOLD、価格決定シートのリンク一覧を表示します。<br>
+    Google（買取価格）、カメラのキタムラ買取、マップカメラ買取、ヤフオク落札相場、eBay Sold履歴（AR／PR／PR DDU）、価格関連シートのリンク一覧を表示します。<br>
     下部の「この結果をコピー」ボタンで、チャットワークやメモに一括貼り付けできます。
   </p>
 
   <div class="card">
-    <!-- ★ ここを追加：Googleレンズボタン -->
+    <!-- ★ Googleレンズボタン -->
     <div>
-      <button type="button" id="openGoogleLensBtn" 
-  style="background:#6b7280; color:#fff; padding:10px 18px; border-radius:6px; border:none; cursor:pointer;">
-  Googleレンズを開く
-</button>
+      <button type="button" id="openGoogleLensBtn"
+        style="background:#6b7280; color:#fff; padding:10px 18px; border-radius:6px; border:none; cursor:pointer;">
+        Googleレンズを開く
+      </button>
     </div>
 
     <div style="margin-top: 12px;">
@@ -103,10 +103,13 @@
       <label><input type="checkbox" id="cond_mint" checked> 美品</label>
       <label><input type="checkbox" id="cond_exc"> 並品</label>
       <label><input type="checkbox" id="cond_read"> 訳あり</label>
-      <label><input type="checkbox" id="cond_asis"> ジャンク</label>
+      <label><input type="checkbox" id="cond_asis"> ジャンク</label><br>
+      <!-- ★ 箱付きオプション（状態ブロック内） -->
+      <label><input type="checkbox" id="opt_box"> 箱付き</label>
       <div class="small">
         ※ 状態を選ぶと、ヤフオクは「日本語状態」、eBayは「英語状態（new / mint / exc / read / asis）」を末尾に付けて検索します。<br>
-        ※ キタムラ・マップカメラは状態ワードは付けず、型番のみで検索します。
+        ※ 箱付きにチェックを入れると、eBay検索キーワード末尾に「box」、ヤフオク検索キーワード末尾に「箱」を付けます。<br>
+        ※ Google／キタムラ／マップカメラは箱情報を付けず、型番のみで検索します。
       </div>
     </div>
 
@@ -115,6 +118,10 @@
       <label>
         <input type="checkbox" id="open_sheet" checked>
         価格決定シートをリンク一覧に含める
+      </label><br>
+      <label>
+        <input type="checkbox" id="open_comp_sheet">
+        ライバル価格分析シートをリンク一覧に含める
       </label>
     </div>
 
@@ -127,35 +134,32 @@
   </div>
 
   <script>
-    // ★ Googleレンズを別タブで開くボタン
-const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
+    // ★ Googleレンズを別タブ or アプリで開くボタン
+    const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
 
-if (openGoogleLensBtn) {
-  openGoogleLensBtn.addEventListener("click", () => {
-    const ua = navigator.userAgent.toLowerCase();
-    const isMobile = /iphone|ipad|ipod|android/.test(ua);
-    const isIOS = /iphone|ipad|ipod/.test(ua);
+    if (openGoogleLensBtn) {
+      openGoogleLensBtn.addEventListener("click", () => {
+        const ua = navigator.userAgent.toLowerCase();
+        const isMobile = /iphone|ipad|ipod|android/.test(ua);
+        const isIOS = /iphone|ipad|ipod/.test(ua);
 
-    // PC
-    if (!isMobile) {
-      window.open("https://lens.google.com/", "_blank", "noopener");
-      return;
+        // PC
+        if (!isMobile) {
+          window.open("https://lens.google.com/", "_blank", "noopener");
+          return;
+        }
+
+        // Android → Lens Web or アプリ
+        if (!isIOS) {
+          window.open("https://lens.google.com/", "_blank", "noopener");
+          return;
+        }
+
+        // iPhone / iPad → Googleアプリ起動を試す
+        window.location.href = "google://";
+        // ※ iOS は別タブでアプリ起動は不可（仕様）
+      });
     }
-
-    // Android → 新しいタブで Lens Web、またはアプリ起動が成功するケースあり
-    if (!isIOS) {
-      window.open("https://lens.google.com/", "_blank", "noopener");
-      return;
-    }
-
-    // iPhone（Safari/Chrome 共通） → 可能な最短ルート：Googleアプリ起動の試行
-    // ここが iOS でできる最大のショートカット
-    window.location.href = "google://";
-
-    // ※ iOS は App起動＝別タブという挙動はできない（仕様）
-  });
-}
-
 
     document.getElementById("runBtn").addEventListener("click", function () {
       const modelInput = document.getElementById("model");
@@ -172,7 +176,10 @@ if (openGoogleLensBtn) {
       const condExc  = document.getElementById("cond_exc").checked;
       const condRead = document.getElementById("cond_read").checked;
       const condAsis = document.getElementById("cond_asis").checked;
-      const openSheet = document.getElementById("open_sheet").checked;
+      const includeBox = document.getElementById("opt_box").checked;
+
+      const openSheet     = document.getElementById("open_sheet").checked;
+      const openCompSheet = document.getElementById("open_comp_sheet").checked;
 
       const hasCondition = condNew || condMint || condExc || condRead || condAsis;
 
@@ -193,7 +200,6 @@ if (openGoogleLensBtn) {
 
       // --------------------------------
       // 2. カメラのキタムラ（買取）
-      // https://www.net-chuko.com/ec/sell/item-list?keyword=TESTWORD
       // --------------------------------
       const kitaUrl =
         "https://www.net-chuko.com/ec/sell/item-list?keyword=" + baseUrlWord;
@@ -201,17 +207,36 @@ if (openGoogleLensBtn) {
 
       // --------------------------------
       // 3. マップカメラ（買取）
-      // https://www.mapcamera.com/ec/assessment/search?keyword=TESTWORD
       // --------------------------------
       const mapUrl =
         "https://www.mapcamera.com/ec/assessment/search?keyword=" + baseUrlWord;
       links.push({ label: "マップカメラ買取", url: mapUrl });
 
       // --------------------------------
+      // 状態リスト（eBay用の英語・ヤフオク用の日本語・ラベル）
+      // --------------------------------
+      const conds = [];
+      if (condNew) {
+        conds.push({ jp: "新品", en: "new",  labelJP: "（新品）", labelEN: "（new）" });
+      }
+      if (condMint) {
+        conds.push({ jp: "美品", en: "mint", labelJP: "（美品）", labelEN: "（mint）" });
+      }
+      if (condExc) {
+        conds.push({ jp: "並品", en: "exc",  labelJP: "（並品）", labelEN: "（exc）" });
+      }
+      if (condRead) {
+        conds.push({ jp: "訳あり", en: "read", labelJP: "（訳あり）", labelEN: "（read）" });
+      }
+      if (condAsis) {
+        conds.push({ jp: "ジャンク", en: "asis", labelJP: "（ジャンク）", labelEN: "（asis）" });
+      }
+
+      // --------------------------------
       // 4. ヤフオク落札相場（高い順）
       // --------------------------------
-      function buildYahuUrl(word, labelSuffix) {
-        const w = encodeURIComponent(word);
+      function buildYahuUrl(queryWord, labelSuffix) {
+        const w = encodeURIComponent(queryWord);
         const baseYahu =
           "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=TESTWORD&va=TESTWORD&b=1&n=100&select=2";
         const url = baseYahu.replace(/TESTWORD/g, w);
@@ -219,43 +244,98 @@ if (openGoogleLensBtn) {
       }
 
       if (hasCondition) {
-        if (condNew)  buildYahuUrl(baseWord + " 新品", "（新品）");
-        if (condMint) buildYahuUrl(baseWord + " 美品", "（美品）");
-        if (condExc)  buildYahuUrl(baseWord + " 並品", "（並品）");
-        if (condRead) buildYahuUrl(baseWord + " 訳あり", "（訳あり）");
-        if (condAsis) buildYahuUrl(baseWord + " ジャンク", "（ジャンク）");
+        conds.forEach(c => {
+          let q = baseWord + " " + c.jp;
+          if (includeBox) {
+            q += " 箱";
+          }
+          const suffixJP = includeBox
+            ? c.labelJP.replace("）", " 箱）")
+            : c.labelJP;
+          buildYahuUrl(q, suffixJP);
+        });
       } else {
-        buildYahuUrl(baseWord, "");
+        let q = baseWord;
+        if (includeBox) {
+          q += " 箱";
+        }
+        // ラベルは状態なしなのでそのまま
+        buildYahuUrl(q, "");
       }
 
       // --------------------------------
-      // 5. eBay SOLD（高い順）
+      // 5. eBay AR / PR / PR DDU Sold履歴
       // --------------------------------
-      function buildEbayUrl(word, labelSuffix) {
-        const w = encodeURIComponent(word);
-        const baseEbay =
+
+      // 5-1. eBay AR（通常のSold検索：現在のSold履歴と同じ）
+      function buildEbayArUrl(queryWord, labelSuffix) {
+        const w = encodeURIComponent(queryWord);
+        const baseEbayAR =
           "https://www.ebay.com/sch/i.html?_nkw=TESTWORD&_sacat=0&LH_Sold=1&LH_Complete=1&_sop=16";
-        const url = baseEbay.replace("TESTWORD", w);
-        links.push({ label: "eBay Sold履歴" + labelSuffix, url: url });
+        const url = baseEbayAR.replace("TESTWORD", w);
+        links.push({ label: "eBay AR Sold履歴" + labelSuffix, url: url });
+      }
+
+      // 5-2. eBay PR（Product Research / 直近90日）
+      function buildEbayPrUrl(queryWord, labelSuffix) {
+        const q = encodeURIComponent(queryWord.replace(/\s+/g, " ").trim());
+        const baseEbayPR =
+          "https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=TESTWORD&dayRange=90&categoryId=0&offset=0&limit=50&sorting=-avgsalesprice&tabName=SOLD&tz=Asia%2FTokyo";
+        const url = baseEbayPR.replace("TESTWORD", q);
+        links.push({ label: "eBay PR Sold履歴" + labelSuffix, url: url });
+      }
+
+      // 5-3. eBay PR（トランプ関税無しDDU時代 90days）
+      function buildEbayPrDduUrl(queryWord, labelSuffix) {
+        const q = encodeURIComponent(queryWord.replace(/\s+/g, " ").trim());
+        const baseEbayPRDDU =
+          "https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=TESTWORD&dayRange=CUSTOM&endDate=1743346800000&startDate=1735657200000&categoryId=0&offset=0&limit=50&sorting=-avgsalesprice&tabName=SOLD&tz=Asia%2FTokyo";
+        const url = baseEbayPRDDU.replace("TESTWORD", q);
+        links.push({
+          label: "eBay PR(トランプ関税無しDDU時代 90days) Sold履歴" + labelSuffix,
+          url: url
+        });
       }
 
       if (hasCondition) {
-        if (condNew)  buildEbayUrl(baseWord + " new", "（new）");
-        if (condMint) buildEbayUrl(baseWord + " mint", "（mint）");
-        if (condExc)  buildEbayUrl(baseWord + " exc", "（exc）");
-        if (condRead) buildEbayUrl(baseWord + " read", "（read）");
-        if (condAsis) buildEbayUrl(baseWord + " asis", "（asis）");
+        conds.forEach(c => {
+          // AR / PR / PR DDU 共通でクエリを作る
+          let qBase = baseWord + " " + c.en;
+          if (includeBox) {
+            qBase += " box";
+          }
+          const suffixEN = includeBox
+            ? c.labelEN.replace("）", " box）")
+            : c.labelEN;
+
+          buildEbayArUrl(qBase, suffixEN);
+          buildEbayPrUrl(qBase, suffixEN);
+          buildEbayPrDduUrl(qBase, suffixEN);
+        });
       } else {
-        buildEbayUrl(baseWord, "");
+        let qBase = baseWord;
+        if (includeBox) {
+          qBase += " box";
+        }
+        // 状態なし → ラベルにカッコは付けない
+        buildEbayArUrl(qBase, "");
+        buildEbayPrUrl(qBase, "");
+        buildEbayPrDduUrl(qBase, "");
       }
 
       // --------------------------------
-      // 6. 価格決定シート（オプション）
+      // 6. シート類（オプション）
       // --------------------------------
       if (openSheet) {
         const sheetUrl =
           "https://docs.google.com/spreadsheets/d/1XMfP-UmRxQ-mCCcfqvFkkfwpRqOiywTPVPnMLeadaBA/edit?gid=0#gid=0";
         links.push({ label: "価格決定シート", url: sheetUrl });
+      }
+
+      if (openCompSheet) {
+        const compSheetUrl =
+          "https://docs.google.com/spreadsheets/d/1KeDsJ3p4AGW6CkVK-515v-UYF5np2vG2GjqaJIqNCRo/edit?usp=sharing";
+        links.push({ label: "ライバル価格分析シート", url: compSheetUrl });
       }
 
       // 一覧表示＋コピー用テキスト生成
@@ -294,7 +374,7 @@ if (openGoogleLensBtn) {
 
       // コピー用テキストエリア＋ボタン
       html += `
-        <p style="margin-top:12px; font-weight:bold;">コピー用（チャットワークなどに保存したいとき）</p>
+        <p style="marginトップ:12px; font-weight:bold;">コピー用（チャットワークなどに保存したいとき）</p>
         <p class="small">※ 「この結果をコピー」ボタンを押して、チャットワークやメモに貼り付けてください。</p>
         <button type="button" id="copyBtn">この結果をコピー</button>
         <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
