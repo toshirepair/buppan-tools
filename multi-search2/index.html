@@ -77,14 +77,6 @@
 </head>
 <body>
   <h1>マルチサイト一括リサーチツール</h1>
-  <p class="small">
-    キーワードを1回入力して、複数サイト（eBay／ヤフオク／メルカリ／ラクマ／ヤフーショッピング／Amazon／Etsy／Catawiki）をまとめてリサーチするツールです。<br>
-    状態（新品／美品／並品／訳あり／ジャンク）を選ぶと、<br>
-    ・eBayは英語状態（new / mint / exc / read / asis）<br>
-    ・ヤフオク／メルカリ／ラクマは日本語状態（新品・美品・並品・訳あり・ジャンク）<br>
-    を末尾に付けて検索します。<br>
-    ヤフーショッピング／Amazon.co.jp／Amazon.com／Etsy／Catawiki は、状態ワードを付けるとヒットが激減するため、あえて状態ワードなしの素のキーワードで検索します。
-  </p>
 
   <div class="card">
     <!-- ★ Googleレンズボタン（キーワードの上） -->
@@ -134,7 +126,7 @@
       <!-- 1行目：eBay 3種 -->
       <label><input type="checkbox" id="useEbayAR" checked> eBay(AR)</label>
       <label><input type="checkbox" id="useEbayPR" checked> eBay(PR)</label>
-      <label><input type="checkbox" id="useEbayPRDDU" checked> eBay(PR:DDU 90days 2025-01-03)</label><br>
+      <label><input type="checkbox" id="useEbayPRDDU" checked> eBay(PR:トランプ関税無しDDU時代 90days)</label><br>
 
       <!-- 2行目：ヤフオク／メルカリ／ラクマ -->
       <label><input type="checkbox" id="useYahu" checked> ヤフオク</label>
@@ -274,8 +266,13 @@
               query += " box";
             }
             const word = encodeURIComponent(query);
+            // ラベル用（箱付きならカッコ内に box 追加）
+            const suffixEN = includeBox
+              ? c.labelEN.replace("）", " box）")
+              : c.labelEN;
+
             const url = baseEbayAR.replace("TESTWORD", word);
-            links.push({ label: "eBay(AR)" + c.labelEN, url: url });
+            links.push({ label: "eBay(AR)" + suffixEN, url: url });
           });
         } else {
           let query = baseWord;
@@ -302,8 +299,12 @@
               query += " box";
             }
             const word = encodeURIComponent(query.replace(/\s+/g, " ").trim());
+            const suffixEN = includeBox
+              ? c.labelEN.replace("）", " box）")
+              : c.labelEN;
+
             const url = baseEbayPR.replace("TESTWORD", word);
-            links.push({ label: "eBay(PR)" + c.labelEN, url: url });
+            links.push({ label: "eBay(PR)" + suffixEN, url: url });
           });
         } else {
           let query = baseWord;
@@ -317,7 +318,7 @@
       }
 
       // =========================================================
-      // eBay(PR:DDU 90days 2025-01-03) （DDU時代固定期間）
+      // eBay(PR:トランプ関税無しDDU時代 90days) （DDU時代固定期間）
       // =========================================================
       if (useEbayPRDDU) {
         const baseEbayPRDDU =
@@ -330,8 +331,15 @@
               query += " box";
             }
             const word = encodeURIComponent(query.replace(/\s+/g, " ").trim());
+            const suffixEN = includeBox
+              ? c.labelEN.replace("）", " box）")
+              : c.labelEN;
+
             const url = baseEbayPRDDU.replace("TESTWORD", word);
-            links.push({ label: "eBay(PR:DDU 90days 2025-01-03)" + c.labelEN, url: url });
+            links.push({
+              label: "eBay(PR:トランプ関税無しDDU時代 90days)" + suffixEN,
+              url: url
+            });
           });
         } else {
           let query = baseWord;
@@ -340,7 +348,10 @@
           }
           const word = encodeURIComponent(query.replace(/\s+/g, " ").trim());
           const url = baseEbayPRDDU.replace("TESTWORD", word);
-          links.push({ label: "eBay(PR:DDU 90days 2025-01-03)", url: url });
+          links.push({
+            label: "eBay(PR:トランプ関税無しDDU時代 90days)",
+            url: url
+          });
         }
       }
 
@@ -358,8 +369,12 @@
               query += " 箱";
             }
             const word = encodeURIComponent(query);
+            const suffixJP = includeBox
+              ? c.labelJP.replace("）", " 箱）")
+              : c.labelJP;
+
             const url = baseYahu.replace(/TESTWORD/g, word);
-            links.push({ label: "ヤフオク落札相場" + c.labelJP, url: url });
+            links.push({ label: "ヤフオク落札相場" + suffixJP, url: url });
           });
         } else {
           let query = baseWord;
@@ -386,8 +401,12 @@
               query += " 箱";
             }
             const word = encodeURIComponent(query);
+            const suffixJP = includeBox
+              ? c.labelJP.replace("）", " 箱）")
+              : c.labelJP;
+
             const url = baseMercari.replace("TESTWORD", word);
-            links.push({ label: "メルカリ（売り切れ）" + c.labelJP, url: url });
+            links.push({ label: "メルカリ（売り切れ）" + suffixJP, url: url });
           });
         } else {
           let query = baseWord;
@@ -414,8 +433,12 @@
               query += " 箱";
             }
             const word = encodeURIComponent(query);
+            const suffixJP = includeBox
+              ? c.labelJP.replace("）", " 箱）")
+              : c.labelJP;
+
             const url = baseRakuma.replace("TESTWORD", word);
-            links.push({ label: "ラクマ（売り切れ）" + c.labelJP, url: url });
+            links.push({ label: "ラクマ（売り切れ）" + suffixJP, url: url });
           });
         } else {
           let query = baseWord;
