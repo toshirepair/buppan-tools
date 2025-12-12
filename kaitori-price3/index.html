@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>買取査定ツール（Web版）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 16px;
+      line-height: 1.6;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+    label {
+      display: inline-block;
+      margin-right: 12px;
+      margin-bottom: 4px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 18px;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 6px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      margin-top: 12px;
+    }
+    .btn-gray {
+      background: #6b7280;
+      color: #fff;
+    }
+    .small {
+      font-size: 0.85rem;
+      color: #555;
+    }
+    ul.result-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+      margin-top: 8px;
+    }
+    ul.result-list li {
+      margin-bottom: 14px;
+    }
+    a.result-link {
+      font-size: 1rem;
+      text-decoration: underline;
+      color: #2563eb;
+    }
+    textarea.copy-area {
+      width: 100%;
+      min-height: 150px;
+      box-sizing: border-box;
+      font-size: 0.85rem;
+      margin-top: 8px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>買取査定ツール（Web版）</h1>
+
+  <div class="card">
+    <!-- Googleレンズ -->
+    <div>
+      <button type="button" id="openGoogleLensBtn" class="btn-gray">Googleレンズを開く</button>
+    </div>
+
+    <!-- キーワード -->
+    <div style="margin-top: 12px;">
+      <label for="keyword"><strong>型番（ベースキーワード）</strong></label>
+      <input type="text" id="keyword" placeholder="例：Nikon D750 50mm f1.8 など">
+    </div>
+
+    <!-- 状態＋箱付き -->
+    <div style="margin-top: 12px;">
+      <div><strong>状態（ヤフオク・メルカリ・eBay のみ反映）</strong></div>
+      <label><input type="checkbox" id="cond_new"> 新品</label>
+      <label><input type="checkbox" id="cond_mint" checked> 美品</label>
+      <label><input type="checkbox" id="cond_exc"> 並品</label>
+      <label><input type="checkbox" id="cond_read"> 訳あり</label>
+      <label><input type="checkbox" id="cond_genjo"> 現状</label>
+      <label><input type="checkbox" id="cond_junk"> ジャンク</label><br>
+      <label><input type="checkbox" id="opt_box"> 箱付き</label>
+    </div>
+
+    <!-- オプション（シート） -->
+    <div style="margin-top: 12px;">
+      <strong>オプション</strong><br>
+      <label><input type="checkbox" id="sheet_price" checked> 価格決定シート</label><br>
+      <label><input type="checkbox" id="sheet_rival"> ライバル価格分析シート</label>
+    </div>
+
+    <button id="runBtn">検索開始</button>
+  </div>
+
+  <div id="result" class="card" style="display:none; margin-top:16px;">
+    <strong>リンク一覧（スマホ／PC共通）</strong>
+    <div id="resultLinks" class="small" style="margin-top:8px;"></div>
+  </div>
+
+  <script>
+    // ===== Googleレンズを開く（PC/AndroidはLens Web、iOSはGoogleアプリ起動を試行）=====
+    const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
+    if (openGoogleLensBtn) {
+      openGoogleLensBtn.addEventListener("click", () => {
+        const ua = navigator.userAgent.toLowerCase();
+        const isMobile = /iphone|ipad|ipod|android/.test(ua);
+        const isIOS = /iphone|ipad|ipod/.test(ua);
+
+        if (!isMobile) {
+          window.open("https://lens.google.com/", "_blank", "noopener");
+          return;
+        }
+        if (!isIOS) {
+          window.open("https://lens.google.com/", "_blank", "noopener");
+          return;
+        }
+        window.location.href = "google://";
+      });
+    }
+
+    document.getElementById("runBtn").addEventListener("click", function () {
+      const baseWord = document.getElementById("keyword").value.trim();
+
+      if (!baseWord) {
+        alert("型番を入力してください。");
+        document.getElementById("keyword").focus();
+        return;
+      }
+
+      const includeBox = document.getElementById("opt_box").checked;
+
+      // 状態チェック（ヤフオク/メルカリ：日本語、eBay：英語）
+      const condNew   = document.getElementById("cond_new").checked;
+      const condMint  = document.getElementById("cond_mint").checked;
+      const condExc   = document.getElementById("cond_exc").checked;
+      const condRead  = document.getElementById("cond_read").checked;
+      const condGenjo = document.getElementById("cond_genjo").checked; // 現状 -> eBay asis
+      const condJunk  = document.getElementById("cond_junk").checked;  // ジャンク -> eBay parts
+
+      const sheetPrice = document.getElementById("sheet_price").checked;
+      const sheetRival = document.getElementById("sheet_rival").checked;
+
+      const hasCondition = condNew || condMint || condExc || condRead || condGenjo || condJunk;
+
+      // 状態リスト（重要：現状=asis / ジャンク=parts）
+      const conds = [];
+      if (condNew)   conds.push({ jp: "新品",   en: "new",   labelJP: "（新品）",   labelEN: "（new）" });
+      if (condMint)  conds.push({ jp: "美品",   en: "mint",  labelJP: "（美品）",   labelEN: "（mint）" });
+      if (condExc)   conds.push({ jp: "並品",   en: "exc",   labelJP: "（並品）",   labelEN: "（exc）" });
+      if (condRead)  conds.push({ jp: "訳あり", en: "read",  labelJP: "（訳あり）", labelEN: "（read）" });
+      if (condGenjo) conds.push({ jp: "現状",   en: "asis",  labelJP: "（現状）",   labelEN: "（asis）" });
+      if (condJunk)  conds.push({ jp: "ジャンク", en: "parts", labelJP: "（ジャンク）", labelEN: "（parts）" });
+
+      // 何も状態がチェックされていない場合は「状態なし」で1本だけ出す
+      if (!hasCondition) {
+        conds.push({ jp: "", en: "", labelJP: "", labelEN: "" });
+      }
+
+      const links = [];
+
+      // 1) Google（買取価格付き）※常に最上段（状態・箱は付けない）
+      links.push({
+        label: "Google（買取価格付き）",
+        url: "https://www.google.com/search?q=" + encodeURIComponent(baseWord + " 買取価格")
+      });
+
+      conds.forEach(c => {
+        // クエリ（ヤフオク/メルカリ：日本語、eBay：英語）
+        let qJP = baseWord;
+        let qEN = baseWord;
+
+        if (c.jp) qJP += " " + c.jp;
+        if (c.en) qEN += " " + c.en;
+
+        if (includeBox) {
+          // 箱付きは「ヤフオク/メルカリは 箱」「eBayは box」
+          qJP += " 箱";
+          qEN += " box";
+        }
+
+        // 表示ラベル（（）内に状態＋箱）
+        const suffixJP = c.labelJP
+          ? (includeBox ? c.labelJP.replace("）", " 箱）") : c.labelJP)
+          : "";
+
+        const suffixEN = c.labelEN
+          ? (includeBox ? c.labelEN.replace("）", " box）") : c.labelEN)
+          : "";
+
+        // 2) ヤフオク（落札相場・落札価格 高い順）
+        // select=2（落札価格順）、b=1（先頭）、n=100（表示数）
+        links.push({
+          label: "ヤフオク落札相場" + suffixJP,
+          url:
+            "https://auctions.yahoo.co.jp/closedsearch/closedsearch" +
+            "?p=" + encodeURIComponent(qJP) +
+            "&va=" + encodeURIComponent(qJP) +
+            "&b=1&n=100&select=2"
+        });
+
+        // 3) メルカリ（販売履歴）※売り切れ＆価格高い順（状態＋箱を付ける）
+        links.push({
+          label: "メルカリ（販売履歴）" + suffixJP,
+          url:
+            "https://jp.mercari.com/search?keyword=" + encodeURIComponent(qJP) +
+            "&status=sold_out&sort=price&order=desc"
+        });
+
+        // 4) eBay AR Sold履歴（SOLD・高い順）※状態＋箱を付ける
+        links.push({
+          label: "eBay AR Sold履歴" + suffixEN,
+          url:
+            "https://www.ebay.com/sch/i.html" +
+            "?_nkw=" + encodeURIComponent(qEN) +
+            "&LH_Sold=1&LH_Complete=1&_sop=16"
+        });
+
+        // 5) eBay PR(トランプ関税無しDDU時代 90days) Sold履歴 ※状態＋箱を付ける
+        links.push({
+          label: "eBay PR(トランプ関税無しDDU時代 90days) Sold履歴" + suffixEN,
+          url:
+            "https://www.ebay.com/sh/research" +
+            "?keywords=" + encodeURIComponent(qEN) +
+            "&dayRange=CUSTOM&startDate=1735657200000&endDate=1743346800000" +
+            "&sorting=-avgsalesprice&tabName=SOLD&tz=Asia%2FTokyo"
+        });
+      });
+
+      // 6) シート類（オプション）
+      if (sheetPrice) {
+        links.push({
+          label: "価格決定シート",
+          url: "https://docs.google.com/spreadsheets/d/1XMfP-UmRxQ-mCCcfqvFkkfwpRqOiywTPVPnMLeadaBA/edit?gid=0#gid=0"
+        });
+      }
+
+      if (sheetRival) {
+        links.push({
+          label: "ライバル価格分析シート",
+          url: "https://docs.google.com/spreadsheets/d/1KeDsJ3p4AGW6CkVK-515v-UYF5np2vG2GjqaJIqNCRo/edit?usp=sharing"
+        });
+      }
+
+      renderLinks(links, baseWord);
+    });
+
+    function renderLinks(links, keyword) {
+      const resultDiv = document.getElementById("result");
+      const resultLinks = document.getElementById("resultLinks");
+
+      if (!links || links.length === 0) {
+        resultDiv.style.display = "none";
+        resultLinks.innerHTML = "";
+        return;
+      }
+
+      let html = '<ul class="result-list">';
+      links.forEach(link => {
+        html += `
+          <li>
+            <a class="result-link" href="${link.url}" target="_blank" rel="noopener noreferrer">
+              <strong>${link.label}</strong>
+            </a>
+          </li>
+        `;
+      });
+      html += "</ul>";
+
+      // コピー用テキスト（見出しに ■ を付ける）
+      let copyText = "";
+      copyText += `■検索キーワード：${keyword}\n\n`;
+      links.forEach(link => {
+        copyText += `${link.label}\n${link.url}\n\n`;
+      });
+
+      // ボタン行（コピー＋Chatwork）
+      html += `
+        <div style="margin-top:12px;">
+          <button type="button" id="copyBtn">この結果をコピー</button>
+          <button type="button" id="openChatworkBtn" class="btn-gray" style="margin-left:8px;">
+            チャットワークを開く
+          </button>
+        </div>
+        <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
+      `;
+
+      resultLinks.innerHTML = html;
+      resultDiv.style.display = "block";
+
+      const copyBtn = document.getElementById("copyBtn");
+      const copyArea = document.getElementById("copyArea");
+      const openChatworkBtn = document.getElementById("openChatworkBtn");
+
+      if (copyBtn && copyArea) {
+        copyBtn.addEventListener("click", function () {
+          const text = copyArea.value;
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+              .then(() => alert("コピーしました。チャットワークやメモに貼り付けてください。"))
+              .catch(() => {
+                copyArea.focus();
+                copyArea.select();
+                document.execCommand("copy");
+                alert("コピーしました。チャットワークやメモに貼り付けてください。");
+              });
+          } else {
+            copyArea.focus();
+            copyArea.select();
+            document.execCommand("copy");
+            alert("コピーしました。チャットワークやメモに貼り付けてください。");
+          }
+        });
+      }
+
+      if (openChatworkBtn) {
+        openChatworkBtn.addEventListener("click", function () {
+          window.open("https://www.chatwork.com/#!rid417619944", "_blank", "noopener,noreferrer");
+        });
+      }
+    }
+  </script>
+</body>
+</html>
