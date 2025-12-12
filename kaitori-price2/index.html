@@ -12,59 +12,44 @@
       padding: 16px;
       line-height: 1.6;
     }
-    h1 {
-      font-size: 1.4rem;
-      margin-bottom: 0.5rem;
-    }
+    h1 { font-size: 1.4rem; }
     .card {
       border: 1px solid #ddd;
       border-radius: 8px;
       padding: 16px;
       margin-top: 12px;
     }
-    label {
-      display: inline-block;
-      margin-right: 12px;
-      margin-bottom: 4px;
-    }
+    label { margin-right: 12px; }
     input[type="text"] {
       width: 100%;
       padding: 8px;
       font-size: 1rem;
-      box-sizing: border-box;
     }
     button {
       padding: 10px 18px;
       font-size: 1rem;
-      cursor: pointer;
       border-radius: 6px;
       border: none;
+      cursor: pointer;
       background: #2563eb;
       color: #fff;
       margin-top: 12px;
     }
-    .small {
-      font-size: 0.85rem;
-      color: #555;
-    }
     ul.result-list {
       list-style: none;
       padding-left: 0;
-      margin: 0;
-      margin-top: 8px;
     }
     ul.result-list li {
       margin-bottom: 14px;
     }
     a.result-link {
       font-size: 1rem;
-      text-decoration: underline;
       color: #2563eb;
+      text-decoration: underline;
     }
     textarea.copy-area {
       width: 100%;
-      min-height: 140px;
-      box-sizing: border-box;
+      min-height: 150px;
       font-size: 0.85rem;
       margin-top: 8px;
       white-space: pre-wrap;
@@ -78,22 +63,15 @@
 <div class="card">
 
   <!-- Google Lens -->
-  <div>
-    <button type="button" id="openGoogleLensBtn"
-      style="background:#6b7280;">
-      Googleレンズを開く
-    </button>
-  </div>
+  <button id="openGoogleLensBtn" style="background:#6b7280;">Googleレンズを開く</button>
 
-  <!-- Keyword -->
   <div style="margin-top:12px;">
-    <label><strong>型番（ベースキーワード）</strong></label>
+    <strong>型番（ベースキーワード）</strong>
     <input type="text" id="keyword" placeholder="例：Nikon D750 50mm f1.8">
   </div>
 
-  <!-- Condition -->
   <div style="margin-top:12px;">
-    <div><strong>状態（ヤフオク・メルカリ・eBay のみ反映）</strong></div>
+    <strong>状態（ヤフオク・メルカリ・eBay のみ反映）</strong><br>
     <label><input type="checkbox" id="cond_new"> 新品</label>
     <label><input type="checkbox" id="cond_mint" checked> 美品</label>
     <label><input type="checkbox" id="cond_exc"> 並品</label>
@@ -103,7 +81,6 @@
     <label><input type="checkbox" id="opt_box"> 箱付き</label>
   </div>
 
-  <!-- Sheets -->
   <div style="margin-top:12px;">
     <label><input type="checkbox" id="sheet_price" checked> 価格決定シート</label><br>
     <label><input type="checkbox" id="sheet_rival"> ライバル価格分析シート</label>
@@ -129,10 +106,10 @@ document.getElementById("openGoogleLensBtn").onclick = () => {
 };
 
 document.getElementById("runBtn").onclick = () => {
-  const base = document.getElementById("keyword").value.trim();
+  const base = keyword.value.trim();
   if (!base) return alert("型番を入力してください");
 
-  const includeBox = document.getElementById("opt_box").checked;
+  const includeBox = opt_box.checked;
 
   const conds = [];
   if (cond_new.checked)   conds.push({jp:"新品", en:"new"});
@@ -141,48 +118,65 @@ document.getElementById("runBtn").onclick = () => {
   if (cond_read.checked)  conds.push({jp:"訳あり", en:"read"});
   if (cond_genjo.checked) conds.push({jp:"現状", en:"asis"});
   if (cond_junk.checked)  conds.push({jp:"ジャンク", en:"parts"});
-
   if (!conds.length) conds.push({jp:"", en:""});
 
   const links = [];
 
+  /* Google（買取価格付き）※常に最上段 */
+  links.push({
+    label: "Google（買取価格付き）",
+    url: "https://www.google.com/search?q=" + encodeURIComponent(base + " 買取価格")
+  });
+
   conds.forEach(c => {
     const boxJP = includeBox ? " 箱" : "";
     const boxEN = includeBox ? " box" : "";
-    const labelJP = c.jp ? `（${c.jp}${includeBox?" 箱":""}）` : "";
-    const labelEN = c.en ? `（${c.en}${includeBox?" box":""}）` : "";
+    const labelJP = c.jp ? `（${c.jp}${includeBox ? " 箱" : ""}）` : "";
+    const labelEN = c.en ? `（${c.en}${includeBox ? " box" : ""}）` : "";
 
-    // Yahoo Auction
+    /* ヤフオク（落札価格・高い順） */
     links.push({
-      label:`ヤフオク落札相場${labelJP}`,
-      url:`https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=${encodeURIComponent(base+" "+c.jp+boxJP)}`
+      label: "ヤフオク落札相場" + labelJP,
+      url:
+        "https://auctions.yahoo.co.jp/closedsearch/closedsearch" +
+        "?p=" + encodeURIComponent(base + " " + c.jp + boxJP) +
+        "&va=" + encodeURIComponent(base + " " + c.jp + boxJP) +
+        "&b=1&n=100&select=2"
     });
 
-    // Mercari
+    /* メルカリ（販売履歴・高い順） */
     links.push({
-      label:`メルカリ（販売履歴）${labelJP}`,
-      url:`https://jp.mercari.com/search?keyword=${encodeURIComponent(base+" "+c.jp+boxJP)}&status=sold_out&sort=price&order=desc`
+      label: "メルカリ（販売履歴）" + labelJP,
+      url:
+        "https://jp.mercari.com/search?keyword=" +
+        encodeURIComponent(base + " " + c.jp + boxJP) +
+        "&status=sold_out&sort=price&order=desc"
     });
 
-    // eBay AR
+    /* eBay AR */
     links.push({
-      label:`eBay AR Sold履歴${labelEN}`,
-      url:`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(base+" "+c.en+boxEN)}&LH_Sold=1&LH_Complete=1&_sop=16`
+      label: "eBay AR Sold履歴" + labelEN,
+      url:
+        "https://www.ebay.com/sch/i.html?_nkw=" +
+        encodeURIComponent(base + " " + c.en + boxEN) +
+        "&LH_Sold=1&LH_Complete=1&_sop=16"
     });
 
-    // eBay PR DDU
+    /* eBay PR DDU */
     links.push({
-      label:`eBay PR(トランプ関税無しDDU時代 90days) Sold履歴${labelEN}`,
-      url:`https://www.ebay.com/sh/research?keywords=${encodeURIComponent(base+" "+c.en+boxEN)}&dayRange=CUSTOM&startDate=1735657200000&endDate=1743346800000&sorting=-avgsalesprice&tabName=SOLD`
+      label: "eBay PR(トランプ関税無しDDU時代 90days) Sold履歴" + labelEN,
+      url:
+        "https://www.ebay.com/sh/research?keywords=" +
+        encodeURIComponent(base + " " + c.en + boxEN) +
+        "&dayRange=CUSTOM&startDate=1735657200000&endDate=1743346800000" +
+        "&sorting=-avgsalesprice&tabName=SOLD"
     });
   });
 
-  if (sheet_price.checked) {
+  if (sheet_price.checked)
     links.push({label:"価格決定シート", url:"https://docs.google.com/spreadsheets/d/1XMfP-UmRxQ-mCCcfqvFkkfwpRqOiywTPVPnMLeadaBA"});
-  }
-  if (sheet_rival.checked) {
+  if (sheet_rival.checked)
     links.push({label:"ライバル価格分析シート", url:"https://docs.google.com/spreadsheets/d/1KeDsJ3p4AGW6CkVK-515v-UYF5np2vG2GjqaJIqNCRo"});
-  }
 
   render(links, base);
 };
@@ -190,7 +184,7 @@ document.getElementById("runBtn").onclick = () => {
 function render(links, keyword) {
   let html = "<ul class='result-list'>";
   let copy = `検索キーワード：${keyword}\n\n`;
-  links.forEach(l=>{
+  links.forEach(l => {
     html += `<li><a class="result-link" href="${l.url}" target="_blank"><strong>${l.label}</strong></a></li>`;
     copy += `${l.label}\n${l.url}\n\n`;
   });
