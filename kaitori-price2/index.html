@@ -183,7 +183,7 @@ document.getElementById("runBtn").onclick = () => {
 
 function render(links, keyword) {
   let html = "<ul class='result-list'>";
-  let copy = `検索キーワード：${keyword}\n\n`;
+  let copy = `■検索キーワード：${keyword}\n\n`;
   links.forEach(l => {
     html += `<li><a class="result-link" href="${l.url}" target="_blank"><strong>${l.label}</strong></a></li>`;
     copy += `${l.label}\n${l.url}\n\n`;
