@@ -152,7 +152,6 @@
 
       <div class="small" style="margin-top:4px;">
         ※ PCでもスマホでも、リンクは下部に一覧表示されます。<br>
-        
       </div>
     </div>
 
@@ -192,7 +191,10 @@
       });
     }
 
-    document.getElementById("runBtn").addEventListener("click", function () {
+    // =========================================================
+    // ★ 検索処理を関数化（ボタンからも、URL起動からも呼べるように）
+    // =========================================================
+    function runSearch() {
       const keywordInput = document.getElementById("keyword");
       const baseWord = keywordInput.value.trim();
 
@@ -503,7 +505,29 @@
       }
 
       renderLinks(links, baseWord);
-    });
+    }
+
+    // ボタン押下 → 検索
+    document.getElementById("runBtn").addEventListener("click", runSearch);
+
+    // =========================================================
+    // ★ URLパラメータ（q）で起動：自動入力＆自動検索
+    //    例）.../multi-search3/?q=Nikon%20D750
+    // =========================================================
+    (function bootFromQueryParam() {
+      const params = new URLSearchParams(window.location.search);
+      const q = (params.get("q") || "").trim();
+      if (!q) return;
+
+      const keywordInput = document.getElementById("keyword");
+      keywordInput.value = q;
+      keywordInput.focus();
+
+      // 画面が落ち着いてから検索（保険）
+      setTimeout(() => {
+        runSearch();
+      }, 50);
+    })();
 
     function renderLinks(links, keyword) {
       const resultDiv = document.getElementById("result");
