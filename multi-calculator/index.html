@@ -1,120 +1,556 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>仕入れ判断 為替×手数料×利益電卓</title>
-<style>
-body{font-family:system-ui;background:#fff;margin:0;padding:16px}
-.wrap{max-width:900px;margin:auto}
-.box{border:1px solid #ddd;border-radius:12px;padding:12px;margin-top:10px}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-.input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #ccc}
-.k{font-size:.85rem;color:#666}
-.v{font-size:1.3rem}
-button{padding:8px 12px;border-radius:8px;border:1px solid #ccc;background:#f5f5f5}
-.chip.active{background:#111;color:#fff}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>仕入れ判断 為替×手数料×利益電卓</title>
+  <style>
+    :root { --bd:#e5e7eb; --fg:#111827; --muted:#6b7280; --bg:#ffffff; --chip:#f3f4f6; }
+    body{
+      font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:var(--bg); color:var(--fg); margin:0; padding:16px;
+      max-width: 920px; margin-inline:auto;
+    }
+    h1{ font-size:1.25rem; margin:0 0 10px; }
+    .card{ border:1px solid var(--bd); border-radius:14px; padding:14px; box-shadow:0 1px 0 rgba(0,0,0,.02); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; }
+    button.chip{
+      border:1px solid var(--bd); background:var(--chip); padding:10px 12px; border-radius:999px;
+      font-size:1rem; cursor:pointer;
+    }
+    button.chip.active{ background:#111827; color:#fff; border-color:#111827; }
+    .grid{ display:grid; gap:10px; }
+    @media (min-width: 780px){ .grid.cols2{ grid-template-columns: 1fr 1fr; } }
+    .box{ border:1px solid var(--bd); border-radius:12px; padding:12px; }
+    .k{ color:var(--muted); font-size:.85rem; }
+    .v{ font-size:1.25rem; margin-top:4px; }
+    .input, select{
+      width:100%; border:1px solid var(--bd); border-radius:12px; padding:12px;
+      font-size:1rem; outline:none; background:#fff;
+    }
+    .sub{ color:var(--muted); font-size:.9rem; margin-top:8px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .btn{ border:1px solid var(--bd); background:#fff; padding:10px 12px; border-radius:10px; cursor:pointer; }
+    .btn[disabled]{ opacity:.6; cursor:not-allowed; }
+    .ok{ color:#059669; } .err{ color:#b91c1c; }
+    .toggle{ display:flex; align-items:center; gap:8px; user-select:none; }
+    .toggle input{ transform: scale(1.15); }
+    .small{ font-size:.85rem; color:var(--muted); }
+    .hr{ height:1px; background:var(--bd); margin:10px 0; }
+    .pill{ display:inline-block; padding:2px 8px; border:1px solid var(--bd); border-radius:999px; font-size:.8rem; }
+  </style>
 </head>
 <body>
-<div class="wrap">
 
-<h2>仕入れ判断 為替×手数料×利益電卓</h2>
+<h1>仕入れ判断 為替×手数料×利益電卓（JPY / USD / EUR）</h1>
 
-<div class="row">
-<button class="chip active" data-cur="JPY">JPY</button>
-<button class="chip" data-cur="USD">USD</button>
-<button class="chip" data-cur="EUR">EUR</button>
-<button id="refresh">レート更新</button>
-</div>
+<div class="card">
+  <div class="row">
+    <div class="chips" role="tablist" aria-label="入力通貨の選択">
+      <button class="chip active" data-cur="JPY" aria-selected="true">¥ JPY</button>
+      <button class="chip" data-cur="USD" aria-selected="false">$ USD</button>
+      <button class="chip" data-cur="EUR" aria-selected="false">€ EUR</button>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="refresh" class="btn">レート更新</button>
+      <button id="swap" class="btn">入力通貨切替</button>
+    </div>
+  </div>
 
-<div class="box">
-<div class="k">① 売価</div>
-<input id="amount" class="input" placeholder="例：120000">
-<div id="rate">レート：取得中…</div>
-</div>
+  <div class="grid cols2" style="margin-top:10px;">
+    <div class="box">
+      <div class="k">① 売価（入力）</div>
+      <input id="amount" class="input" inputmode="decimal" placeholder="金額を入力（例：120000）" />
+      <div class="sub">
+        <div>レート：<span id="rateStatus" class="ok">読み込み中…</span></div>
+        <div class="k" id="rateText">—</div>
+      </div>
 
-<div class="box">
-<div class="k">② 販売先</div>
-<select id="market" class="input">
-<option value="ebay">eBay</option>
-<option value="catawiki">Catawiki</option>
-<option value="domestic">ヤフオク・メルカリ</option>
-</select>
-</div>
+      <div id="manualRateBox" class="box" style="margin-top:10px; display:none;">
+        <div class="k">レート取得できない場合（手動入力）</div>
+        <div class="small" style="margin:6px 0 10px;">
+          ネットワーク制限などでAPIにアクセスできない時は、ここに入れると計算できます。
+        </div>
+        <div class="grid cols2">
+          <div>
+            <div class="k">1 USD = 何 JPY</div>
+            <input id="manualUsdJpy" class="input" inputmode="decimal" placeholder="例：150.25" />
+          </div>
+          <div>
+            <div class="k">1 EUR = 何 JPY</div>
+            <input id="manualEurJpy" class="input" inputmode="decimal" placeholder="例：163.40" />
+          </div>
+        </div>
+        <div class="small" style="margin-top:8px;">
+          ※ 入れると自動的にその値で計算します（他の人には影響しません）
+        </div>
+      </div>
+    </div>
 
-<div class="box">
-<div class="k">③ 希望利益（JPY）</div>
-<input id="profit" class="input" value="10000">
-<div class="k">送料（JPY）</div>
-<input id="ship" class="input" value="0">
-<div class="k">関税（JPY）</div>
-<input id="duty" class="input" value="0">
-</div>
+    <div class="box">
+      <div class="k">② 販売先</div>
+      <select id="market" class="input">
+        <option value="ebay">eBay</option>
+        <option value="catawiki">Catawiki</option>
+        <option value="domestic">ヤフオク・メルカリ</option>
+      </select>
+      <div class="small" id="marketHint" style="margin-top:8px;"></div>
+    </div>
+  </div>
 
-<div class="box">
-<div class="k">仕入れ判断（JPY）</div>
-<div class="v" id="result">—</div>
-</div>
+  <div class="hr"></div>
 
+  <div class="grid cols2">
+    <div class="box">
+      <div class="k">③ 手数料（ON/OFF）</div>
+      <div class="row" style="justify-content:flex-start; margin-top:8px;">
+        <label class="toggle"><input type="checkbox" id="onEbayFee" checked> eBay手数料</label>
+        <label class="toggle"><input type="checkbox" id="onPayoneer" checked> Payoneer</label>
+        <label class="toggle"><input type="checkbox" id="onCataFee"> Catawiki手数料</label>
+        <label class="toggle"><input type="checkbox" id="onDomesticFee"> ヤフオク・メルカリ手数料</label>
+      </div>
+
+      <div class="grid cols2" style="margin-top:10px;">
+        <div>
+          <div class="k">eBay手数料（%）</div>
+          <input id="ebayPct" class="input" inputmode="decimal" value="15.00" />
+        </div>
+        <div>
+          <div class="k">Payoneer（%）</div>
+          <input id="payoneerPct" class="input" inputmode="decimal" value="2.00" />
+        </div>
+        <div>
+          <div class="k">Catawiki手数料（%）</div>
+          <input id="cataPct" class="input" inputmode="decimal" value="12.50" />
+        </div>
+        <div>
+          <div class="k">ヤフオク・メルカリ手数料（%）</div>
+          <input id="domesticPct" class="input" inputmode="decimal" value="10.00" />
+        </div>
+      </div>
+
+      <div class="small" style="margin-top:8px;">
+        ※販売先を変えると、必要な手数料だけ自動でONになります（必要なら手動で変更OK）
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="k">④ コスト（任意）</div>
+
+      <!-- 希望利益を上に -->
+      <div style="margin-top:8px;">
+        <label class="toggle"><input type="checkbox" id="onProfit" checked> 希望利益を差し引く</label>
+        <div class="k" style="margin-top:6px;">希望利益（JPY）</div>
+        <input id="profitJpy" class="input" inputmode="decimal" value="10000" />
+      </div>
+
+      <!-- 送料・関税はその下 -->
+      <div class="hr"></div>
+
+      <div class="row" style="justify-content:flex-start;">
+        <label class="toggle"><input type="checkbox" id="onShip"> 送料を差し引く</label>
+        <label class="toggle"><input type="checkbox" id="onDuty"> 関税を差し引く</label>
+        <span class="pill" id="dduPill" style="display:none;">Catawiki: DDU想定</span>
+      </div>
+
+      <div class="grid cols2" style="margin-top:10px;">
+        <div>
+          <div class="k">送料（JPY）</div>
+          <input id="shipJpy" class="input" inputmode="decimal" value="0" />
+        </div>
+        <div>
+          <div class="k">関税（JPY）</div>
+          <input id="dutyJpy" class="input" inputmode="decimal" value="0" />
+        </div>
+      </div>
+
+      <div class="small" id="dduNote" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="grid cols2">
+    <div class="box">
+      <div class="k">換算表示</div>
+      <div class="row" style="justify-content:flex-start; margin-top:8px;">
+        <div style="flex:1;">
+          <div class="k">JPY</div><div class="v" id="outJPY">—</div>
+        </div>
+        <div style="flex:1;">
+          <div class="k">USD</div><div class="v" id="outUSD">—</div>
+        </div>
+        <div style="flex:1;">
+          <div class="k">EUR</div><div class="v" id="outEUR">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="k">仕入れ判断（JPY）</div>
+      <div class="row" style="justify-content:flex-start; margin-top:8px;">
+        <div style="flex:1;">
+          <div class="k">入金額（手数料後）</div>
+          <div class="v" id="payoutJpy">—</div>
+        </div>
+        <div style="flex:1;">
+          <div class="k">入札上限目安（=入金−希望利益−送料−関税）</div>
+          <div class="v" id="maxBuyJpy">—</div>
+        </div>
+      </div>
+      <div class="small" id="feeBreak" style="margin-top:8px;"></div>
+      <div class="small" id="calcHint" style="margin-top:6px;"></div>
+    </div>
+  </div>
 </div>
 
 <script>
-let active="JPY";
-let rates=null;
+(() => {
+  // ===== Cache =====
+  const FX_CACHE_KEY = "fx_cache_eur_jpy_usd_v3";
+  const FX_CACHE_TTL_MS = 10 * 60 * 1000; // 10分
 
-const chips=document.querySelectorAll(".chip");
-chips.forEach(b=>{
-b.onclick=()=>{
-chips.forEach(x=>x.classList.remove("active"));
-b.classList.add("active");
-active=b.dataset.cur;
-calc();
-};
-});
+  const readFxCache = () => {
+    try {
+      const raw = localStorage.getItem(FX_CACHE_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || !obj.rates || !obj.ts) return null;
+      return obj;
+    } catch { return null; }
+  };
+  const writeFxCache = (payload) => { try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify(payload)); } catch {} };
 
-async function fetchRate(){
-try{
-const r=await fetch("https://api.exchangerate.host/latest?base=EUR&symbols=JPY,USD");
-const d=await r.json();
-rates={JPY:d.rates.JPY,USD:d.rates.USD};
-document.getElementById("rate").textContent=
-`EUR→JPY ${rates.JPY.toFixed(2)} / EUR→USD ${rates.USD.toFixed(4)}`;
-calc();
-}catch{
-document.getElementById("rate").textContent="レート取得失敗";
-}
-}
+  // ===== state =====
+  let active = "JPY";
+  let eurToJpy = null;
+  let eurToUsd = null;
+  let lastDate = null;
+  let rateSource = null; // "frankfurter" | "exchangeratehost" | "manual"
 
-function calc(){
-if(!rates) return;
-const amt=Number(document.getElementById("amount").value||0);
-const profit=Number(document.getElementById("profit").value||0);
-const ship=Number(document.getElementById("ship").value||0);
-const duty=Number(document.getElementById("duty").value||0);
-const market=document.getElementById("market").value;
+  // ===== els =====
+  const elAmount = document.getElementById("amount");
+  const elRateStatus = document.getElementById("rateStatus");
+  const elRateText = document.getElementById("rateText");
+  const elManualBox = document.getElementById("manualRateBox");
+  const elManualUsdJpy = document.getElementById("manualUsdJpy");
+  const elManualEurJpy = document.getElementById("manualEurJpy");
 
-let jpy=active==="JPY"?amt:
-active==="USD"?amt*(rates.JPY/rates.USD):
-amt*rates.JPY;
+  const elOutJPY = document.getElementById("outJPY");
+  const elOutUSD = document.getElementById("outUSD");
+  const elOutEUR = document.getElementById("outEUR");
 
-let fee=0;
-if(market==="ebay") fee=jpy*(0.15+0.02);
-if(market==="catawiki") fee=jpy*0.125;
-if(market==="domestic") fee=jpy*0.10;
+  const elMarket = document.getElementById("market");
+  const elMarketHint = document.getElementById("marketHint");
+  const elDDUNote = document.getElementById("dduNote");
+  const elDDUPill = document.getElementById("dduPill");
 
-const buy=jpy-fee-profit-ship-duty;
-document.getElementById("result").textContent=
-`入札上限：¥${Math.round(buy).toLocaleString()}`;
-}
+  const onEbayFee = document.getElementById("onEbayFee");
+  const onPayoneer = document.getElementById("onPayoneer");
+  const onCataFee = document.getElementById("onCataFee");
+  const onDomesticFee = document.getElementById("onDomesticFee");
 
-["amount","profit","ship","duty","market"].forEach(id=>{
-document.getElementById(id).addEventListener("input",calc);
-});
+  const ebayPct = document.getElementById("ebayPct");
+  const payoneerPct = document.getElementById("payoneerPct");
+  const cataPct = document.getElementById("cataPct");
+  const domesticPct = document.getElementById("domesticPct");
 
-document.getElementById("refresh").onclick=fetchRate;
+  const onShip = document.getElementById("onShip");
+  const onDuty = document.getElementById("onDuty");
+  const onProfit = document.getElementById("onProfit");
+  const shipJpy = document.getElementById("shipJpy");
+  const dutyJpy = document.getElementById("dutyJpy");
+  const profitJpy = document.getElementById("profitJpy");
 
-fetchRate();
+  const payoutJpy = document.getElementById("payoutJpy");
+  const maxBuyJpy = document.getElementById("maxBuyJpy");
+  const feeBreak = document.getElementById("feeBreak");
+  const calcHint = document.getElementById("calcHint");
+
+  const btnRefresh = document.getElementById("refresh");
+
+  // ===== helpers =====
+  const fmt = (currency, n) => {
+    if (!isFinite(n)) return "—";
+    const opt = { style: "currency", currency };
+    if (currency === "JPY") opt.maximumFractionDigits = 0;
+    return new Intl.NumberFormat("ja-JP", opt).format(n);
+  };
+  const parseNumber = (s) => {
+    if (s === null || s === undefined) return NaN;
+    const cleaned = String(s).replace(/[¥$€,\s]/g, "").replace(/[^\d.-]/g, "");
+    return cleaned ? Number(cleaned) : NaN;
+  };
+  const pctToRate = (pct) => {
+    const p = parseNumber(pct);
+    return isFinite(p) ? (p / 100) : 0;
+  };
+
+  const getCrossRates = () => {
+    if (!(eurToJpy && eurToUsd)) return null;
+    const jpyToEur = 1 / eurToJpy;
+    const usdToEur = 1 / eurToUsd;
+    const jpyToUsd = eurToUsd / eurToJpy;
+    const usdToJpy = eurToJpy / eurToUsd;
+    return { eurToJpy, eurToUsd, jpyToEur, usdToEur, jpyToUsd, usdToJpy };
+  };
+
+  const renderRateUI = (msg, ok, extra="") => {
+    const r = getCrossRates();
+    elRateStatus.textContent = msg + (extra ? ` ${extra}` : "");
+    elRateStatus.className = ok ? "ok" : "err";
+
+    if (!r) {
+      elRateText.textContent = "—";
+      return;
+    }
+    elRateText.textContent =
+      `JPY→USD=${r.jpyToUsd.toFixed(6)} / USD→JPY=${r.usdToJpy.toFixed(2)} / ` +
+      `JPY→EUR=${r.jpyToEur.toFixed(6)} / EUR→JPY=${r.eurToJpy.toFixed(2)} (date:${lastDate || "—"})`;
+  };
+
+  const setActive = (cur) => {
+    active = cur;
+    document.querySelectorAll("button.chip").forEach(btn => {
+      const on = btn.dataset.cur === cur;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    elAmount.placeholder = cur === "JPY" ? "金額を入力（円）" : (cur === "USD" ? "金額を入力（USD）" : "金額を入力（EUR）");
+    recalcAll();
+  };
+
+  const amountToJPY = (amount, r) => {
+    if (!isFinite(amount) || !r) return NaN;
+    if (active === "JPY") return amount;
+    if (active === "USD") return amount * r.usdToJpy;
+    return amount * r.eurToJpy;
+  };
+
+  const applyMarketDefaultsUI = () => {
+    const m = elMarket.value;
+
+    onEbayFee.checked = false;
+    onPayoneer.checked = false;
+    onCataFee.checked = false;
+    onDomesticFee.checked = false;
+
+    elDDUNote.textContent = "";
+    elDDUPill.style.display = "none";
+
+    if (m === "ebay") {
+      elMarketHint.textContent = "eBay：eBay(15%)＋Payoneer(2%) を差し引いて入金額を算出";
+      onEbayFee.checked = true;
+      onPayoneer.checked = true;
+    } else if (m === "catawiki") {
+      elMarketHint.textContent = "Catawiki：Catawiki(12.5%) を差し引いて入金額を算出（DDU想定なら関税は基本OFF）";
+      onCataFee.checked = true;
+      onDuty.checked = false;
+      elDDUPill.style.display = "inline-block";
+      elDDUNote.textContent = "DDU運用なら、関税は原則バイヤー負担 → ここはOFFのままが基本。";
+    } else {
+      elMarketHint.textContent = "ヤフオク・メルカリ：手数料(10%) を差し引いて入金額を算出";
+      onDomesticFee.checked = true;
+    }
+  };
+
+  const recalcAll = () => {
+    const amount = parseNumber(elAmount.value);
+    const r = getCrossRates();
+
+    calcHint.textContent = "";
+
+    if (!r) {
+      // レートなし → 手動入力を案内
+      elOutJPY.textContent = "—";
+      elOutUSD.textContent = "—";
+      elOutEUR.textContent = "—";
+      payoutJpy.textContent = "—";
+      maxBuyJpy.textContent = "—";
+      feeBreak.textContent = "";
+      calcHint.textContent = "レートが未取得です。下の「手動入力」に USD→JPY / EUR→JPY を入れると計算できます。";
+      return;
+    }
+
+    if (!isFinite(amount)) {
+      elOutJPY.textContent = "—";
+      elOutUSD.textContent = "—";
+      elOutEUR.textContent = "—";
+      payoutJpy.textContent = "—";
+      maxBuyJpy.textContent = "—";
+      feeBreak.textContent = "";
+      return;
+    }
+
+    // FX display
+    let jpy, usd, eur;
+    if (active === "JPY") { jpy = amount; usd = amount * r.jpyToUsd; eur = amount * r.jpyToEur; }
+    else if (active === "USD") { usd = amount; jpy = amount * r.usdToJpy; eur = amount * r.usdToEur; }
+    else { eur = amount; jpy = amount * r.eurToJpy; usd = amount * r.eurToUsd; }
+
+    elOutJPY.textContent = fmt("JPY", jpy);
+    elOutUSD.textContent = fmt("USD", usd);
+    elOutEUR.textContent = fmt("EUR", eur);
+
+    const grossJpy = amountToJPY(amount, r);
+
+    const ebayFeeVal = onEbayFee.checked ? grossJpy * pctToRate(ebayPct.value) : 0;
+    const payoFeeVal = onPayoneer.checked ? grossJpy * pctToRate(payoneerPct.value) : 0;
+    const cataFeeVal = onCataFee.checked ? grossJpy * pctToRate(cataPct.value) : 0;
+    const domesticFeeVal = onDomesticFee.checked ? grossJpy * pctToRate(domesticPct.value) : 0;
+
+    const payout = grossJpy - (ebayFeeVal + payoFeeVal + cataFeeVal + domesticFeeVal);
+
+    const profit = (onProfit.checked ? parseNumber(profitJpy.value) : 0) || 0;
+    const ship = (onShip.checked ? parseNumber(shipJpy.value) : 0) || 0;
+    const duty = (onDuty.checked ? parseNumber(dutyJpy.value) : 0) || 0;
+
+    const maxBuy = payout - profit - ship - duty;
+
+    payoutJpy.textContent = fmt("JPY", payout);
+    maxBuyJpy.textContent = fmt("JPY", maxBuy);
+
+    const parts = [];
+    parts.push(`売価(円換算) ${fmt("JPY", grossJpy)}`);
+    if (onEbayFee.checked) parts.push(`eBay -${fmt("JPY", ebayFeeVal)}`);
+    if (onPayoneer.checked) parts.push(`Payoneer -${fmt("JPY", payoFeeVal)}`);
+    if (onCataFee.checked) parts.push(`Catawiki -${fmt("JPY", cataFeeVal)}`);
+    if (onDomesticFee.checked) parts.push(`ヤフオク/メルカリ -${fmt("JPY", domesticFeeVal)}`);
+    parts.push(`入金 ${fmt("JPY", payout)}`);
+    if (onProfit.checked) parts.push(`希望利益 -${fmt("JPY", profit)}`);
+    if (onShip.checked) parts.push(`送料 -${fmt("JPY", ship)}`);
+    if (onDuty.checked) parts.push(`関税 -${fmt("JPY", duty)}`);
+    parts.push(`入札上限 ${fmt("JPY", maxBuy)}`);
+    feeBreak.textContent = parts.join(" → ");
+  };
+
+  const applyRates = (eurJpy, eurUsd, dateStr, source) => {
+    eurToJpy = Number(eurJpy);
+    eurToUsd = Number(eurUsd);
+    lastDate = dateStr || null;
+    rateSource = source || null;
+  };
+
+  const tryFetchFrankfurter = async () => {
+    const url = "https://api.frankfurter.dev/latest?from=EUR&to=JPY,USD";
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (!data?.rates?.JPY || !data?.rates?.USD) throw new Error("invalid");
+    return { jpy: data.rates.JPY, usd: data.rates.USD, date: data.date || null, src: "frankfurter" };
+  };
+
+  const tryFetchExchangeRateHostOSS = async () => {
+    // OSSインスタンス（キー不要想定の方）
+    const url = "https://api.exchangerate.host/latest?base=EUR&symbols=JPY,USD";
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    // 成功形式の違いを吸収
+    const jpy = data?.rates?.JPY;
+    const usd = data?.rates?.USD;
+    if (!jpy || !usd) throw new Error("invalid");
+    return { jpy, usd, date: data.date || null, src: "exchangeratehost" };
+  };
+
+  const fetchRates = async (force=false) => {
+    btnRefresh.disabled = true;
+
+    // cache
+    const cache = readFxCache();
+    const now = Date.now();
+    if (!force && cache && cache.ts && (now - cache.ts) < FX_CACHE_TTL_MS) {
+      applyRates(cache.rates.JPY, cache.rates.USD, cache.date, cache.src);
+      renderRateUI(`OK（キャッシュ）`, true, `(${cache.src})`);
+      elManualBox.style.display = "none";
+      recalcAll();
+      btnRefresh.disabled = false;
+      return;
+    }
+
+    renderRateUI("更新中…", true);
+
+    try {
+      // 1) Frankfurter
+      const a = await tryFetchFrankfurter();
+      applyRates(a.jpy, a.usd, a.date, a.src);
+      writeFxCache({ ts: Date.now(), date: a.date, rates: { JPY: a.jpy, USD: a.usd }, src: a.src });
+      renderRateUI("OK", true, `(source:${a.src})`);
+      elManualBox.style.display = "none";
+      recalcAll();
+      return;
+    } catch (e1) {
+      try {
+        // 2) api.exchangerate.host (OSS)
+        const b = await tryFetchExchangeRateHostOSS();
+        applyRates(b.jpy, b.usd, b.date, b.src);
+        writeFxCache({ ts: Date.now(), date: b.date, rates: { JPY: b.jpy, USD: b.usd }, src: b.src });
+        renderRateUI("OK", true, `(source:${b.src})`);
+        elManualBox.style.display = "none";
+        recalcAll();
+        return;
+      } catch (e2) {
+        // 3) fallback to stale cache
+        const stale = readFxCache();
+        if (stale?.rates?.JPY && stale?.rates?.USD) {
+          applyRates(stale.rates.JPY, stale.rates.USD, stale.date, stale.src);
+          renderRateUI("取得失敗（キャッシュで継続）", false, `(source:${stale.src || "cache"})`);
+          elManualBox.style.display = "none";
+          recalcAll();
+          return;
+        }
+
+        // 4) manual mode
+        eurToJpy = null; eurToUsd = null; lastDate = null; rateSource = "manual";
+        renderRateUI("取得失敗（手動入力へ）", false);
+        elManualBox.style.display = "block";
+        recalcAll();
+      }
+    } finally {
+      btnRefresh.disabled = false;
+    }
+  };
+
+  // manual rate input -> derive EUR->USD and set rates
+  const applyManualIfReady = () => {
+    const usdJpy = parseNumber(elManualUsdJpy.value);
+    const eurJpy = parseNumber(elManualEurJpy.value);
+    if (!isFinite(usdJpy) || !isFinite(eurJpy) || usdJpy <= 0 || eurJpy <= 0) return;
+
+    const eurUsd = eurJpy / usdJpy; // EUR->USD = (EUR->JPY)/(USD->JPY)
+    applyRates(eurJpy, eurUsd, null, "manual");
+    renderRateUI("OK（手動）", true, "(manual)");
+    recalcAll();
+  };
+
+  // ===== events =====
+  document.querySelectorAll("button.chip").forEach(btn => btn.addEventListener("click", () => setActive(btn.dataset.cur)));
+
+  document.getElementById("swap").addEventListener("click", () => {
+    const order = ["JPY","USD","EUR"];
+    setActive(order[(order.indexOf(active) + 1) % order.length]);
+  });
+
+  document.getElementById("refresh").addEventListener("click", () => fetchRates(true));
+
+  elMarket.addEventListener("change", () => { applyMarketDefaultsUI(); recalcAll(); });
+
+  [
+    elAmount,
+    onEbayFee, onPayoneer, onCataFee, onDomesticFee,
+    ebayPct, payoneerPct, cataPct, domesticPct,
+    onProfit, profitJpy, onShip, shipJpy, onDuty, dutyJpy
+  ].forEach(el => el.addEventListener("input", recalcAll));
+
+  [elManualUsdJpy, elManualEurJpy].forEach(el => el.addEventListener("input", applyManualIfReady));
+
+  // ===== init =====
+  applyMarketDefaultsUI();
+  setActive("JPY");
+  fetchRates(false);
+  setInterval(() => fetchRates(false), 60 * 60 * 1000);
+})();
 </script>
+
 </body>
 </html>
