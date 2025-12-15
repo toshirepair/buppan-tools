@@ -27,7 +27,7 @@
   .small{ font-size:.82rem; color:#777; margin-top:6px; line-height:1.35; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 
-  /* ✅ 常に2カラム（スマホでも横並び） */
+  /* 常に2カラム（スマホでも横並び） */
   .grid2Always{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -44,19 +44,30 @@
     background:#fff;
   }
 
+  /* 為替レート入力：デフォ薄グレー → 入力で白 */
   .rateInput{
     background:#f1f1f1;
     transition: background .15s ease;
   }
   .rateInput.filled{ background:#fff; }
 
+  /* ✅ 通貨ボタンを1行固定にする */
+  .chipRow{
+    display:flex;
+    gap:8px;
+    flex-wrap:nowrap;      /* 折り返さない */
+    overflow:hidden;
+    margin-top:4px;
+  }
   button.chip{
+    flex:1 1 0;            /* 3つを均等幅にして1行に収める */
+    min-width:0;
     border:1px solid #ccc;
     border-radius:999px;
-    padding:8px 12px;
+    padding:8px 0;
     background:#f3f3f3;
     cursor:pointer;
-    white-space:nowrap;
+    white-space:nowrap;    /* 文字も折り返さない */
   }
   button.chip.active{
     background:#111;
@@ -99,6 +110,19 @@
     user-select:none;
   }
   .bidValue:active{ opacity:.7; }
+
+  /* 上部のコピーしやすい入札上限 */
+  .topBidTitle{
+    font-weight:800; /* 太字 */
+    color:#333;
+    font-size:.95rem;
+  }
+  .topBidSub{
+    font-weight:500;
+    color:#666;
+    font-size:.85rem;
+    margin-left:6px;
+  }
 
   .btn{
     width:100%;
@@ -154,35 +178,20 @@
 <div class="wrap">
   <h1>Bid Limit Calculator</h1>
 
-  <!-- ① 為替（手動） -->
+  <!-- ✅ 入札上限（Bid Limit）を①の上へ（コピーしやすい） -->
   <div class="card">
-    <div class="row" style="justify-content:space-between;">
-      <div class="kbold">① 為替レート（手動入力）</div>
-      <a class="linkBtn" href="https://www.bk.mufg.jp/ippan/rate/real.html" target="_blank" rel="noopener">
-        為替レートを見る（MUFG）
-      </a>
+    <div>
+      <span class="topBidTitle">入札上限（Bid Limit）</span>
+      <span class="topBidSub">※タップでコピー</span>
     </div>
-
-    <!-- ✅ スマホでも横並び -->
-    <div class="grid2Always" style="margin-top:8px;">
-      <div>
-        <div class="k">1 USD = JPY</div>
-        <input id="usdJpy" class="input rateInput" inputmode="decimal" placeholder="例：156">
-      </div>
-      <div>
-        <div class="k">1 EUR = JPY</div>
-        <input id="eurJpy" class="input rateInput" inputmode="decimal" placeholder="例：183">
-      </div>
-    </div>
-
-    <div class="small">※ 入力したレートは、このブラウザに自動保存されます</div>
+    <div class="v bidValue" id="bidLimitTop">—</div>
+    <div class="small" id="copyMsgTop"></div>
   </div>
 
-  <!-- ② 販売先・通貨・売価 -->
+  <!-- ① 販売先・通貨・売価 -->
   <div class="card">
-    <div class="sectionTitle">② 販売先・通貨・売価</div>
+    <div class="sectionTitle">① 販売先・通貨・売価</div>
 
-    <!-- ✅ スマホでも横並び -->
     <div class="grid2Always" style="margin-top:6px;">
       <div>
         <div class="k">販売先</div>
@@ -195,7 +204,8 @@
 
       <div>
         <div class="k">通貨</div>
-        <div class="row" style="margin-top:4px;">
+        <!-- ✅ 1行固定 -->
+        <div class="chipRow">
           <button class="chip active" data-cur="JPY">JPY</button>
           <button class="chip" data-cur="USD">USD</button>
           <button class="chip" data-cur="EUR">EUR</button>
@@ -211,6 +221,29 @@
     <div class="small" id="fxNeedHint"></div>
   </div>
 
+  <!-- ② 為替レート（手動） -->
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <div class="kbold">② 為替レート（手動入力）</div>
+      <a class="linkBtn" href="https://www.bk.mufg.jp/ippan/rate/real.html" target="_blank" rel="noopener">
+        為替レートを見る（MUFG）
+      </a>
+    </div>
+
+    <div class="grid2Always" style="margin-top:8px;">
+      <div>
+        <div class="k">1 USD = JPY</div>
+        <input id="usdJpy" class="input rateInput" inputmode="decimal" placeholder="例：156">
+      </div>
+      <div>
+        <div class="k">1 EUR = JPY</div>
+        <input id="eurJpy" class="input rateInput" inputmode="decimal" placeholder="例：183">
+      </div>
+    </div>
+
+    <div class="small">※ 入力したレートは、このブラウザに自動保存されます</div>
+  </div>
+
   <!-- ③ 利益・コスト設定 -->
   <div class="card">
     <div class="kbold">③ 利益・コスト設定</div>
@@ -222,7 +255,6 @@
       </label>
     </div>
 
-    <!-- ✅ 関税欄削除 / 送料を統合 -->
     <div class="grid2Always" style="margin-top:10px;">
       <div>
         <div class="k">利益（JPY）</div>
@@ -236,16 +268,12 @@
     </div>
   </div>
 
-  <!-- 結果 -->
+  <!-- 結果（最下位のまま） -->
   <div class="card">
-    <div class="k">仕入（入札上限）※タップでコピー</div>
-    <div class="v bidValue" id="bidLimit">—</div>
-    <div class="small" id="copyMsg"></div>
+    <div class="k">内訳（円換算）</div>
+    <div class="small muted" id="grossHint">—</div>
 
-    <div class="breakdown">
-      <div class="k">内訳（円換算）</div>
-      <div class="small muted" id="grossHint">—</div>
-
+    <div class="breakdown" style="border-top:none; padding-top:6px;">
       <div class="line"><div class="l">販売先</div><div class="r" id="bMarket">—</div></div>
       <div class="line"><div class="l">売価</div><div class="r" id="bGross">—</div></div>
       <div class="line"><div class="l">手数料</div><div class="r" id="bFee">—</div></div>
@@ -265,14 +293,14 @@
 <script>
 (() => {
   const K = {
-    active: "blc_active_v5",
-    market: "blc_market_v5",
-    amount: "blc_amount_v5",
-    usdJpy: "blc_usdJpy_v5",
-    eurJpy: "blc_eurJpy_v5",
-    profit: "blc_profit_v5",
-    ship: "blc_ship_v5",
-    tax: "blc_tax_v5",
+    active: "blc_active_v6",
+    market: "blc_market_v6",
+    amount: "blc_amount_v6",
+    usdJpy: "blc_usdJpy_v6",
+    eurJpy: "blc_eurJpy_v6",
+    profit: "blc_profit_v6",
+    ship: "blc_ship_v6",
+    tax: "blc_tax_v6",
   };
 
   const chips = document.querySelectorAll(".chip");
@@ -288,8 +316,8 @@
   const profitEl = document.getElementById("profit");
   const shipEl = document.getElementById("ship"); // 送料・関税
 
-  const bidLimitEl = document.getElementById("bidLimit");
-  const copyMsgEl = document.getElementById("copyMsg");
+  const bidLimitTopEl = document.getElementById("bidLimitTop");
+  const copyMsgTopEl = document.getElementById("copyMsgTop");
 
   const grossHintEl = document.getElementById("grossHint");
   const bMarketEl = document.getElementById("bMarket");
@@ -406,7 +434,7 @@
 
   const calc = () => {
     errMsgEl.textContent = "";
-    copyMsgEl.textContent = "";
+    copyMsgTopEl.textContent = "";
     copyAllMsg.textContent = "";
 
     const market = marketEl.value;
@@ -418,7 +446,7 @@
 
     const taxOn = !!taxCheckEl.checked;
     const profit = parseNum(profitEl.value) || 0;
-    const ship = parseNum(shipEl.value) || 0; // 送料・関税
+    const ship = parseNum(shipEl.value) || 0;
 
     // save cache
     localStorage.setItem(K.market, market);
@@ -434,7 +462,7 @@
     setRateInputStyle(eurJpyEl);
 
     if (!isFinite(amount) || amount <= 0) {
-      bidLimitEl.textContent = "—";
+      bidLimitTopEl.textContent = "—";
       grossHintEl.textContent = "—";
       bMarketEl.textContent = "—";
       bGrossEl.textContent = "—";
@@ -448,12 +476,12 @@
 
     if (active === "USD" && (!isFinite(usdJpy) || usdJpy <= 0)) {
       errMsgEl.textContent = "USD入力の場合は「1 USD = JPY」を入力してください。";
-      bidLimitEl.textContent = "—";
+      bidLimitTopEl.textContent = "—";
       return;
     }
     if (active === "EUR" && (!isFinite(eurJpy) || eurJpy <= 0)) {
       errMsgEl.textContent = "EUR入力の場合は「1 EUR = JPY」を入力してください。";
-      bidLimitEl.textContent = "—";
+      bidLimitTopEl.textContent = "—";
       return;
     }
 
@@ -480,10 +508,12 @@
     bBidEl.textContent = fmtJPY(bidJpy);
     bProfitEl.textContent = fmtJPY(profit);
 
-    bidLimitEl.textContent = fmtJPY(bidJpy);
-    bidLimitEl.dataset.copyValue = String(Math.round(bidJpy));
+    // 上部入札上限（コピー用）
+    bidLimitTopEl.textContent = fmtJPY(bidJpy);
+    bidLimitTopEl.dataset.copyValue = String(Math.round(bidJpy));
 
-    bidLimitEl.dataset.copyText = buildCopyText({
+    // コピー全文
+    bidLimitTopEl.dataset.copyText = buildCopyText({
       marketLabel: marketLabel(market),
       priceLine,
       feeJpy,
@@ -496,8 +526,10 @@
     });
   };
 
+  // 通貨ボタン
   chips.forEach(b => b.addEventListener("click", () => setActive(b.dataset.cur)));
 
+  // 販売先変更 → 自動で通貨選択（手動変更OK）
   marketEl.addEventListener("change", () => {
     const m = marketEl.value;
     const autoCur = (m === "catawiki") ? "EUR" : "JPY";
@@ -509,20 +541,22 @@
     el.addEventListener("change", calc);
   });
 
-  bidLimitEl.addEventListener("click", async () => {
-    const v = bidLimitEl.dataset.copyValue;
+  // 上部：タップで入札上限（数字のみ）コピー
+  bidLimitTopEl.addEventListener("click", async () => {
+    const v = bidLimitTopEl.dataset.copyValue;
     if (!v) return;
     try{
       await navigator.clipboard.writeText(v);
-      copyMsgEl.textContent = "コピーしました（仕入 / 入札上限）";
-      setTimeout(()=>copyMsgEl.textContent="",1200);
+      copyMsgTopEl.textContent = "コピーしました（入札上限）";
+      setTimeout(()=>copyMsgTopEl.textContent="",1200);
     }catch{
-      copyMsgEl.textContent = "コピーに失敗しました（ブラウザ制限の可能性）";
+      copyMsgTopEl.textContent = "コピーに失敗しました（ブラウザ制限の可能性）";
     }
   });
 
+  // 結果をコピー（全文）
   copyAllBtn.addEventListener("click", async () => {
-    const text = bidLimitEl.dataset.copyText;
+    const text = bidLimitTopEl.dataset.copyText;
     if (!text) return;
     try{
       await navigator.clipboard.writeText(text);
