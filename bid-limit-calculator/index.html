@@ -43,11 +43,12 @@
     background:#fff;
   }
 
-  .rateInput{
+  /* 為替・利益：デフォ薄グレー → 入力で白 */
+  .softInput{
     background:#f1f1f1;
     transition: background .15s ease;
   }
-  .rateInput.filled{ background:#fff; }
+  .softInput.filled{ background:#fff; }
 
   .chipRow{
     display:flex;
@@ -159,6 +160,18 @@
     color:#333;
     margin-bottom:6px;
   }
+
+  /* ✅ 売価クリア（青文字） */
+  .clearLink{
+    display:inline-block;
+    margin-left:10px;     /* 少し間隔 */
+    color:#1d4ed8;
+    font-size:.9rem;
+    font-weight:700;
+    cursor:pointer;
+    user-select:none;
+  }
+  .clearLink:active{ opacity:.7; }
 </style>
 </head>
 <body>
@@ -197,7 +210,13 @@
       </div>
     </div>
 
-    <div class="k" style="margin-top:10px;">売価</div>
+    <div class="row" style="justify-content:space-between; margin-top:10px;">
+      <div class="k" style="margin:0;">
+        売価
+        <span class="clearLink" id="clearAmount">クリア</span>
+      </div>
+    </div>
+
     <div class="moneyWrap">
       <div class="prefix" id="amountPrefix">¥</div>
       <input id="amount" class="moneyInput" inputmode="decimal" placeholder="例：20000">
@@ -216,11 +235,11 @@
     <div class="grid2Always" style="margin-top:8px;">
       <div>
         <div class="k">1 USD = JPY</div>
-        <input id="usdJpy" class="input rateInput" inputmode="decimal" placeholder="例：156">
+        <input id="usdJpy" class="input softInput" inputmode="decimal" placeholder="例：156">
       </div>
       <div>
         <div class="k">1 EUR = JPY</div>
-        <input id="eurJpy" class="input rateInput" inputmode="decimal" placeholder="例：183">
+        <input id="eurJpy" class="input softInput" inputmode="decimal" placeholder="例：183">
       </div>
     </div>
 
@@ -240,7 +259,8 @@
     <div class="grid2Always" style="margin-top:10px;">
       <div>
         <div class="k">利益（JPY）</div>
-        <input id="profit" class="input" inputmode="decimal" value="10000">
+        <!-- ✅ 利益も未入力は薄グレー -->
+       <input id="profit" class="input softInput" inputmode="decimal" placeholder="例：5000">
       </div>
       <div>
         <div class="k">送料・関税（JPY）</div>
@@ -274,19 +294,20 @@
 <script>
 (() => {
   const K = {
-    active: "blc_active_v7",
-    market: "blc_market_v7",
-    amount: "blc_amount_v7",
-    usdJpy: "blc_usdJpy_v7",
-    eurJpy: "blc_eurJpy_v7",
-    profit: "blc_profit_v7",
-    ship: "blc_ship_v7",
-    tax: "blc_tax_v7",
+    active: "blc_active_v8",
+    market: "blc_market_v8",
+    amount: "blc_amount_v8",
+    usdJpy: "blc_usdJpy_v8",
+    eurJpy: "blc_eurJpy_v8",
+    profit: "blc_profit_v8",
+    ship: "blc_ship_v8",
+    tax: "blc_tax_v8",
   };
 
   const chips = document.querySelectorAll(".chip");
   const amountPrefix = document.getElementById("amountPrefix");
   const amountEl = document.getElementById("amount");
+  const clearAmountEl = document.getElementById("clearAmount");
   const marketEl = document.getElementById("market");
   const fxNeedHint = document.getElementById("fxNeedHint");
 
@@ -348,9 +369,10 @@
     return "ヤフオク・メルカリ";
   };
 
-  const setRateInputStyle = (el) => el.classList.toggle("filled", (el.value || "").trim() !== "");
+  const setSoftStyle = (el) => {
+    el.classList.toggle("filled", (String(el.value ?? "").trim() !== ""));
+  };
 
-  // ===== 自動フォーカス：空欄の時だけ次へ（2回目以降は発動しない） =====
   const focusNext = (el) => {
     if (!el) return;
     setTimeout(() => {
@@ -360,9 +382,7 @@
   };
   const isEmpty = (el) => (String(el.value ?? "").trim() === "");
 
-  // 売価入力後：USD→EUR→利益（ただし空欄のときだけ）
   const focusChainAfterAmount = () => {
-    // USD/EUR/利益 のどれかが空なら“初回フロー”とみなす
     const needsUsd = isEmpty(usdJpyEl);
     const needsEur = isEmpty(eurJpyEl);
     const needsProfit = isEmpty(profitEl);
@@ -370,8 +390,6 @@
     if (needsUsd) return focusNext(usdJpyEl);
     if (needsEur) return focusNext(eurJpyEl);
     if (needsProfit) return focusNext(profitEl);
-
-    // ぜんぶ埋まってるなら二回目以降：ここでは何もしない
   };
 
   const setActive = (cur) => {
@@ -386,7 +404,6 @@
     else fxNeedHint.textContent = "※ EUR入力の場合は「1 EUR = JPY」が必要です";
 
     calc();
-    // 通貨を押したら売価へ（いつでもOK）
     focusNext(amountEl);
   };
 
@@ -433,8 +450,9 @@
     const t = localStorage.getItem(K.tax);
     if (t !== null) taxCheckEl.checked = (t === "1");
 
-    setRateInputStyle(usdJpyEl);
-    setRateInputStyle(eurJpyEl);
+    setSoftStyle(usdJpyEl);
+    setSoftStyle(eurJpyEl);
+    setSoftStyle(profitEl);
   };
 
   const calc = () => {
@@ -453,18 +471,19 @@
     const profit = parseNum(profitEl.value) || 0;
     const ship = parseNum(shipEl.value) || 0;
 
-    // save cache
+    // cache
     localStorage.setItem(K.market, market);
     localStorage.setItem(K.amount, String(isFinite(amount) ? amount : ""));
     localStorage.setItem(K.tax, taxOn ? "1" : "0");
-    localStorage.setItem(K.profit, String(profit));
+    localStorage.setItem(K.profit, String(isFinite(parseNum(profitEl.value)) ? parseNum(profitEl.value) : (profitEl.value ?? "")));
     localStorage.setItem(K.ship, String(ship));
 
     if (isFinite(usdJpy) && usdJpy > 0) localStorage.setItem(K.usdJpy, String(usdJpy));
     if (isFinite(eurJpy) && eurJpy > 0) localStorage.setItem(K.eurJpy, String(eurJpy));
 
-    setRateInputStyle(usdJpyEl);
-    setRateInputStyle(eurJpyEl);
+    setSoftStyle(usdJpyEl);
+    setSoftStyle(eurJpyEl);
+    setSoftStyle(profitEl);
 
     if (!isFinite(amount) || amount <= 0) {
       bidLimitTopEl.textContent = "—";
@@ -528,16 +547,12 @@
     });
   };
 
-  // ===== events =====
-
-  // 通貨ボタン：押したら売価へフォーカス
+  // events
   chips.forEach(b => b.addEventListener("click", () => setActive(b.dataset.cur)));
 
-  // 販売先を選んだら ⇒ 売価に自動フォーカス（毎回）
   marketEl.addEventListener("change", () => {
     const m = marketEl.value;
     const autoCur = (m === "catawiki") ? "EUR" : "JPY";
-    // 通貨も自動で合わせる（従来仕様）
     active = autoCur;
     localStorage.setItem(K.active, autoCur);
     chips.forEach(btn => btn.classList.toggle("active", btn.dataset.cur === autoCur));
@@ -546,27 +561,32 @@
     else if (autoCur === "USD") fxNeedHint.textContent = "※ USD入力の場合は「1 USD = JPY」が必要です";
     else fxNeedHint.textContent = "※ EUR入力の場合は「1 EUR = JPY」が必要です";
     calc();
-    focusNext(amountEl); // ←毎回ここだけはやる
+    focusNext(amountEl);
   });
 
-  // 売価を入れ終わったら（change/blur）⇒ USD→EUR→利益（空欄の時だけ）
+  // 売価入力後チェーン（初回だけ動く設計）
   amountEl.addEventListener("change", () => { calc(); focusChainAfterAmount(); });
   amountEl.addEventListener("blur",   () => { if (!isEmpty(amountEl)) focusChainAfterAmount(); });
 
-  // USD入力したら ⇒ EUR（空欄の時だけ）
   usdJpyEl.addEventListener("change", () => { calc(); if (isEmpty(eurJpyEl)) focusNext(eurJpyEl); });
   usdJpyEl.addEventListener("blur",   () => { if (!isEmpty(usdJpyEl) && isEmpty(eurJpyEl)) focusNext(eurJpyEl); });
 
-  // EUR入力したら ⇒ 利益（空欄の時だけ）
   eurJpyEl.addEventListener("change", () => { calc(); if (isEmpty(profitEl)) focusNext(profitEl); });
   eurJpyEl.addEventListener("blur",   () => { if (!isEmpty(eurJpyEl) && isEmpty(profitEl)) focusNext(profitEl); });
 
-  // その他は普通に再計算
   [usdJpyEl, eurJpyEl, profitEl, shipEl, taxCheckEl, amountEl].forEach(el => {
     el.addEventListener("input", calc);
   });
 
-  // 上部：タップで入札上限（数字のみ）コピー
+  // ✅ クリア：売価を空に → 結果も消える → 売価へフォーカス
+  clearAmountEl.addEventListener("click", () => {
+    amountEl.value = "";
+    localStorage.setItem(K.amount, "");
+    calc();               // amountが空なので結果も—になる
+    focusNext(amountEl);  // 次の入力がスムーズ
+  });
+
+  // copy (bid limit number)
   bidLimitTopEl.addEventListener("click", async () => {
     const v = bidLimitTopEl.dataset.copyValue;
     if (!v) return;
@@ -593,7 +613,6 @@
 
   // init
   restore();
-  // 初回：販売先に応じて推奨通貨へ
   const initMarket = marketEl.value;
   const initCur = (initMarket === "catawiki") ? "EUR" : "JPY";
   active = initCur;
