@@ -23,6 +23,7 @@
     background:#fff;
   }
   .k{ font-size:.85rem; color:#666; }
+  .kbold{ font-size:.9rem; color:#333; font-weight:800; }
   .small{ font-size:.82rem; color:#777; margin-top:6px; line-height:1.35; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .grid2{
@@ -54,9 +55,10 @@
   button.chip{
     border:1px solid #ccc;
     border-radius:999px;
-    padding:8px 14px;
+    padding:8px 12px;
     background:#f3f3f3;
     cursor:pointer;
+    white-space:nowrap;
   }
   button.chip.active{
     background:#111;
@@ -64,6 +66,7 @@
     border-color:#111;
   }
 
+  /* 通貨記号付き入力 */
   .moneyWrap{
     display:flex;
     align-items:center;
@@ -148,6 +151,19 @@
     color:#333;
     margin-bottom:6px;
   }
+
+  /* 販売先と通貨を横並び */
+  .marketCurrencyRow{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:10px;
+    margin-top:6px;
+  }
+  @media (min-width: 680px){
+    .marketCurrencyRow{
+      grid-template-columns: 1fr 1fr;
+    }
+  }
 </style>
 </head>
 <body>
@@ -157,8 +173,8 @@
   <!-- ① 為替（手動） -->
   <div class="card">
     <div class="row" style="justify-content:space-between;">
-      <div class="k">① 為替レート（手動入力）</div>
-      <a class="linkBtn" id="mufgLink" href="https://www.bk.mufg.jp/ippan/rate/real.html" target="_blank" rel="noopener">
+      <div class="kbold">① 為替レート（手動入力）</div>
+      <a class="linkBtn" href="https://www.bk.mufg.jp/ippan/rate/real.html" target="_blank" rel="noopener">
         為替レートを見る（MUFG）
       </a>
     </div>
@@ -173,26 +189,32 @@
         <input id="eurJpy" class="input rateInput" inputmode="decimal" placeholder="例：183">
       </div>
     </div>
+
     <div class="small">※ 入力したレートは、このブラウザに自動保存されます</div>
   </div>
 
-  <!-- ② 販売先 + ③ 売価通貨・売価（同じ枠） -->
+  <!-- ② 販売先・通貨・売価 -->
   <div class="card">
-    <div class="sectionTitle">② 販売先・③ 売価通貨・売価</div>
+    <div class="sectionTitle">② 販売先・通貨・売価</div>
 
-    <div class="k">販売先</div>
-    <select id="market" class="input">
-      <option value="ebay">eBay</option>
-      <option value="catawiki">catawiki</option>
-      <option value="domestic">ヤフオク・メルカリ</option>
-    </select>
-    <div class="small" id="feeNote">—</div>
+    <div class="marketCurrencyRow">
+      <div>
+        <div class="k">販売先</div>
+        <select id="market" class="input">
+          <option value="ebay">eBay</option>
+          <option value="catawiki">catawiki</option>
+          <option value="domestic">ヤフオク・メルカリ</option>
+        </select>
+      </div>
 
-    <div class="k" style="margin-top:12px;">売価通貨</div>
-    <div class="row" style="margin-top:8px;">
-      <button class="chip active" data-cur="JPY">JPY</button>
-      <button class="chip" data-cur="USD">USD</button>
-      <button class="chip" data-cur="EUR">EUR</button>
+      <div>
+        <div class="k">通貨</div>
+        <div class="row" style="margin-top:4px;">
+          <button class="chip active" data-cur="JPY">JPY</button>
+          <button class="chip" data-cur="USD">USD</button>
+          <button class="chip" data-cur="EUR">EUR</button>
+        </div>
+      </div>
     </div>
 
     <div class="k" style="margin-top:10px;">売価</div>
@@ -203,9 +225,9 @@
     <div class="small" id="fxNeedHint"></div>
   </div>
 
-  <!-- ④ 利益・コスト -->
+  <!-- ③ 利益・コスト設定 -->
   <div class="card">
-    <div class="k">④ 利益・コスト</div>
+    <div class="kbold">③ 利益・コスト設定</div>
 
     <div class="k" style="margin-top:8px;">
       <label>
@@ -261,16 +283,15 @@
 (() => {
   // ===== keys =====
   const K = {
-    active: "blc_active_v3",
-    market: "blc_market_v3",
-    amount: "blc_amount_v3",
-    usdJpy: "blc_usdJpy_v3",
-    eurJpy: "blc_eurJpy_v3",
-    profit: "blc_profit_v3",
-    ship: "blc_ship_v3",
-    duty: "blc_duty_v3",
-    tax: "blc_tax_v3",
-    lastFxFocus: "blc_lastFxFocus_v3", // "USD" or "EUR"
+    active: "blc_active_v4",
+    market: "blc_market_v4",
+    amount: "blc_amount_v4",
+    usdJpy: "blc_usdJpy_v4",
+    eurJpy: "blc_eurJpy_v4",
+    profit: "blc_profit_v4",
+    ship: "blc_ship_v4",
+    duty: "blc_duty_v4",
+    tax: "blc_tax_v4",
   };
 
   // ===== els =====
@@ -278,12 +299,10 @@
   const amountPrefix = document.getElementById("amountPrefix");
   const amountEl = document.getElementById("amount");
   const marketEl = document.getElementById("market");
-  const feeNoteEl = document.getElementById("feeNote");
   const fxNeedHint = document.getElementById("fxNeedHint");
 
   const usdJpyEl = document.getElementById("usdJpy");
   const eurJpyEl = document.getElementById("eurJpy");
-  const mufgLink = document.getElementById("mufgLink");
 
   const taxCheckEl = document.getElementById("taxCheck");
   const profitEl = document.getElementById("profit");
@@ -309,7 +328,6 @@
 
   // ===== state =====
   let active = localStorage.getItem(K.active) || "JPY";
-  let autoCurrencyByMarket = true; // ②変更時に通貨を自動選択（その後手動変更OK）
 
   // ===== helpers =====
   const parseNum = (v) => {
@@ -360,12 +378,6 @@
     else if (cur === "USD") fxNeedHint.textContent = "※ USD入力の場合は「1 USD = JPY」が必要です";
     else fxNeedHint.textContent = "※ EUR入力の場合は「1 EUR = JPY」が必要です";
 
-    // 手動で通貨を変えたら、以後は「販売先変更での自動通貨変更」は維持するが、
-    // 直近の意思として記録しておく（MUFG戻りフォーカス用）
-    if (!fromAuto) {
-      if (cur === "USD" || cur === "EUR") localStorage.setItem(K.lastFxFocus, cur);
-    }
-
     calc();
   };
 
@@ -378,6 +390,7 @@
   const taxStatusLabel = (taxOn) => taxOn ? "消費税10％ ON / ストア" : "消費税10％ OFF / 個人";
 
   const buildCopyText = (state) => {
+    // 「結果をコピー」は前仕様（必要ならまた指定形式に戻せます）
     const lines = [];
     lines.push("Bid Limit Calculator");
     lines.push(`販売先　${state.marketLabel}`);
@@ -419,38 +432,7 @@
 
     setRateInputStyle(usdJpyEl);
     setRateInputStyle(eurJpyEl);
-
-    feeNoteEl.textContent = feeNoteForMarket(marketEl.value);
   };
-
-  // ===== MUFG戻りフォーカス =====
-  const focusFxAfterReturn = () => {
-    // 直近の売価通貨がUSD/EURならそれを優先、そうでなければ lastFxFocus（USD/EUR）、
-    // それもなければUSDにフォーカス
-    const last = localStorage.getItem(K.lastFxFocus);
-    const target =
-      (active === "USD" || active === "EUR") ? active :
-      (last === "EUR" ? "EUR" : "USD");
-
-    const el = (target === "EUR") ? eurJpyEl : usdJpyEl;
-    // iOS/Androidでも気持ちよく
-    setTimeout(() => el.focus(), 0);
-  };
-
-  // MUFGボタン押下時に「戻った時フォーカスしたい」意思を保存
-  mufgLink.addEventListener("click", () => {
-    // USD/EURどっちにフォーカスするかを保存（今の通貨優先）
-    if (active === "EUR") localStorage.setItem(K.lastFxFocus, "EUR");
-    else localStorage.setItem(K.lastFxFocus, "USD");
-  });
-
-  // ページに戻ってきたらフォーカス（visibilitychange）
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      // MUFGから戻った可能性が高いのでフォーカス
-      focusFxAfterReturn();
-    }
-  });
 
   // ===== calc =====
   const calc = () => {
@@ -460,7 +442,6 @@
 
     const market = marketEl.value;
     const feeNote = feeNoteForMarket(market);
-    feeNoteEl.textContent = feeNote;
 
     const amount = parseNum(amountEl.value);
     const usdJpy = parseNum(usdJpyEl.value);
@@ -517,11 +498,9 @@
     const feeJpy = grossJpy * feeRate;
     const payoutJpy = grossJpy - feeJpy;
 
-    // 仕入（入札上限）
     let bidJpy = payoutJpy - ship - duty - profit;
     if (taxOn) bidJpy = bidJpy / 1.10;
 
-    // 売価行（レート明記）
     let rateText = "";
     if (active === "USD") rateText = `（1 USD = ${usdJpy} JPY）`;
     if (active === "EUR") rateText = `（1 EUR = ${eurJpy} JPY）`;
@@ -529,22 +508,19 @@
 
     grossHintEl.textContent = `売価（${active}）${priceLine}`;
 
-    // 内訳表示：手数料に括弧追記
     bMarketEl.textContent = marketLabel(market);
     bGrossEl.textContent = priceLine;
-    bFeeEl.textContent = `${fmtJPY(feeJpy)}（${feeNote}）`;
+    bFeeEl.textContent = `${fmtJPY(feeJpy)}（${feeNote}）`; // ←追加要件：括弧で内訳
     bPayoutEl.textContent = fmtJPY(payoutJpy);
     bShipEl.textContent = fmtJPY(ship);
     bDutyEl.textContent = fmtJPY(duty);
     bBidEl.textContent = fmtJPY(bidJpy);
     bProfitEl.textContent = fmtJPY(profit);
 
-    // 仕入（入札上限）表示（青字）
     bidLimitEl.textContent = fmtJPY(bidJpy);
     bidLimitEl.dataset.copyValue = String(Math.round(bidJpy));
 
-    // コピーテキスト（指定フォーマット＋手数料括弧付き）
-    const copyText = buildCopyText({
+    bidLimitEl.dataset.copyText = buildCopyText({
       marketLabel: marketLabel(market),
       priceLine,
       feeJpy,
@@ -556,21 +532,16 @@
       taxOn,
       profitJpy: profit,
     });
-    bidLimitEl.dataset.copyText = copyText;
   };
 
   // ===== events =====
   chips.forEach(b => b.addEventListener("click", () => setActive(b.dataset.cur)));
 
-  // ②販売先変更 → ③通貨を自動選択（その後手動変更OK）
+  // 販売先変更 → 自動で通貨選択（手動変更OK）
   marketEl.addEventListener("change", () => {
     const m = marketEl.value;
-    // 指定：ヤフメル→JPY / catawiki→EUR / ebay→JPY
-    const autoCur = (m === "catawiki") ? "EUR" : "JPY";
+    const autoCur = (m === "catawiki") ? "EUR" : "JPY"; // 指定通り
     setActive(autoCur, {fromAuto:true});
-    // フォーカス用の記録も更新（USD/EURのみ）
-    if (autoCur === "EUR") localStorage.setItem(K.lastFxFocus, "EUR");
-    calc();
   });
 
   [amountEl, usdJpyEl, eurJpyEl, profitEl, shipEl, dutyEl, taxCheckEl].forEach(el => {
@@ -578,13 +549,6 @@
     el.addEventListener("change", calc);
   });
 
-  // 為替欄を触ったら、戻りフォーカス先を更新
-  usdJpyEl.addEventListener("focus", () => localStorage.setItem(K.lastFxFocus, "USD"));
-  eurJpyEl.addEventListener("focus", () => localStorage.setItem(K.lastFxFocus, "EUR"));
-  usdJpyEl.addEventListener("input", () => localStorage.setItem(K.lastFxFocus, "USD"));
-  eurJpyEl.addEventListener("input", () => localStorage.setItem(K.lastFxFocus, "EUR"));
-
-  // タップで「仕入（入札上限）」数値のみコピー
   bidLimitEl.addEventListener("click", async () => {
     const v = bidLimitEl.dataset.copyValue;
     if (!v) return;
@@ -597,7 +561,6 @@
     }
   });
 
-  // 結果をコピー（指定フォーマット）
   copyAllBtn.addEventListener("click", async () => {
     const text = bidLimitEl.dataset.copyText;
     if (!text) return;
@@ -613,12 +576,10 @@
   // init
   restore();
   setActive(active);
-  // 初回も「市場→通貨」自動合わせを反映したいので一度 market change を踏む
-  // ただし既に手動で通貨を記憶しているケースもあるので、初回は market の推奨通貨を優先
+  // 初回：販売先に応じて推奨通貨へ
   const initMarket = marketEl.value;
   const initCur = (initMarket === "catawiki") ? "EUR" : "JPY";
   setActive(initCur, {fromAuto:true});
-
   calc();
 })();
 </script>
