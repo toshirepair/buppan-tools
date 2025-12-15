@@ -26,13 +26,12 @@
   .kbold{ font-size:.9rem; color:#333; font-weight:800; }
   .small{ font-size:.82rem; color:#777; margin-top:6px; line-height:1.35; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .grid2{
+
+  /* ✅ 常に2カラム（スマホでも横並び） */
+  .grid2Always{
     display:grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     gap:10px;
-  }
-  @media (min-width: 680px){
-    .grid2{ grid-template-columns: 1fr 1fr; }
   }
 
   .input, select{
@@ -45,7 +44,6 @@
     background:#fff;
   }
 
-  /* 為替レート入力：デフォ薄グレー → 入力で白 */
   .rateInput{
     background:#f1f1f1;
     transition: background .15s ease;
@@ -66,7 +64,6 @@
     border-color:#111;
   }
 
-  /* 通貨記号付き入力 */
   .moneyWrap{
     display:flex;
     align-items:center;
@@ -151,19 +148,6 @@
     color:#333;
     margin-bottom:6px;
   }
-
-  /* 販売先と通貨を横並び */
-  .marketCurrencyRow{
-    display:grid;
-    grid-template-columns: 1fr;
-    gap:10px;
-    margin-top:6px;
-  }
-  @media (min-width: 680px){
-    .marketCurrencyRow{
-      grid-template-columns: 1fr 1fr;
-    }
-  }
 </style>
 </head>
 <body>
@@ -179,7 +163,8 @@
       </a>
     </div>
 
-    <div class="grid2" style="margin-top:8px;">
+    <!-- ✅ スマホでも横並び -->
+    <div class="grid2Always" style="margin-top:8px;">
       <div>
         <div class="k">1 USD = JPY</div>
         <input id="usdJpy" class="input rateInput" inputmode="decimal" placeholder="例：156">
@@ -197,7 +182,8 @@
   <div class="card">
     <div class="sectionTitle">② 販売先・通貨・売価</div>
 
-    <div class="marketCurrencyRow">
+    <!-- ✅ スマホでも横並び -->
+    <div class="grid2Always" style="margin-top:6px;">
       <div>
         <div class="k">販売先</div>
         <select id="market" class="input">
@@ -236,18 +222,16 @@
       </label>
     </div>
 
-    <div class="grid2" style="margin-top:10px;">
+    <!-- ✅ 関税欄削除 / 送料を統合 -->
+    <div class="grid2Always" style="margin-top:10px;">
       <div>
         <div class="k">利益（JPY）</div>
         <input id="profit" class="input" inputmode="decimal" value="10000">
       </div>
       <div>
-        <div class="k">送料（JPY）※送料込みで売る時に入力する</div>
+        <div class="k">送料・関税（JPY）</div>
         <input id="ship" class="input" inputmode="decimal" value="0">
-      </div>
-      <div style="grid-column:1 / -1;">
-        <div class="k">関税（JPY）※DDPセラー払いの時に入力する</div>
-        <input id="duty" class="input" inputmode="decimal" value="0">
+        <div class="small">※送料・関税込みの時に入力する</div>
       </div>
     </div>
   </div>
@@ -266,8 +250,7 @@
       <div class="line"><div class="l">売価</div><div class="r" id="bGross">—</div></div>
       <div class="line"><div class="l">手数料</div><div class="r" id="bFee">—</div></div>
       <div class="line"><div class="l">入金額</div><div class="r" id="bPayout">—</div></div>
-      <div class="line"><div class="l">送料</div><div class="r" id="bShip">—</div></div>
-      <div class="line"><div class="l">関税</div><div class="r" id="bDuty">—</div></div>
+      <div class="line"><div class="l">送料・関税</div><div class="r" id="bShip">—</div></div>
       <div class="line"><div class="l">仕入（入札上限）</div><div class="r" id="bBid">—</div></div>
       <div class="line"><div class="l">利益</div><div class="r" id="bProfit">—</div></div>
 
@@ -281,20 +264,17 @@
 
 <script>
 (() => {
-  // ===== keys =====
   const K = {
-    active: "blc_active_v4",
-    market: "blc_market_v4",
-    amount: "blc_amount_v4",
-    usdJpy: "blc_usdJpy_v4",
-    eurJpy: "blc_eurJpy_v4",
-    profit: "blc_profit_v4",
-    ship: "blc_ship_v4",
-    duty: "blc_duty_v4",
-    tax: "blc_tax_v4",
+    active: "blc_active_v5",
+    market: "blc_market_v5",
+    amount: "blc_amount_v5",
+    usdJpy: "blc_usdJpy_v5",
+    eurJpy: "blc_eurJpy_v5",
+    profit: "blc_profit_v5",
+    ship: "blc_ship_v5",
+    tax: "blc_tax_v5",
   };
 
-  // ===== els =====
   const chips = document.querySelectorAll(".chip");
   const amountPrefix = document.getElementById("amountPrefix");
   const amountEl = document.getElementById("amount");
@@ -306,8 +286,7 @@
 
   const taxCheckEl = document.getElementById("taxCheck");
   const profitEl = document.getElementById("profit");
-  const shipEl = document.getElementById("ship");
-  const dutyEl = document.getElementById("duty");
+  const shipEl = document.getElementById("ship"); // 送料・関税
 
   const bidLimitEl = document.getElementById("bidLimit");
   const copyMsgEl = document.getElementById("copyMsg");
@@ -318,7 +297,6 @@
   const bFeeEl = document.getElementById("bFee");
   const bPayoutEl = document.getElementById("bPayout");
   const bShipEl = document.getElementById("bShip");
-  const bDutyEl = document.getElementById("bDuty");
   const bBidEl = document.getElementById("bBid");
   const bProfitEl = document.getElementById("bProfit");
 
@@ -326,10 +304,8 @@
   const copyAllBtn = document.getElementById("copyAllBtn");
   const copyAllMsg = document.getElementById("copyAllMsg");
 
-  // ===== state =====
   let active = localStorage.getItem(K.active) || "JPY";
 
-  // ===== helpers =====
   const parseNum = (v) => {
     const s = String(v ?? "").replace(/[¥$€,\s]/g, "").replace(/[^\d.-]/g, "");
     return s ? Number(s) : NaN;
@@ -367,7 +343,7 @@
     el.classList.toggle("filled", (el.value || "").trim() !== "");
   };
 
-  const setActive = (cur, {fromAuto=false} = {}) => {
+  const setActive = (cur) => {
     active = cur;
     localStorage.setItem(K.active, cur);
 
@@ -390,21 +366,18 @@
   const taxStatusLabel = (taxOn) => taxOn ? "消費税10％ ON / ストア" : "消費税10％ OFF / 個人";
 
   const buildCopyText = (state) => {
-    // 「結果をコピー」は前仕様（必要ならまた指定形式に戻せます）
     const lines = [];
     lines.push("Bid Limit Calculator");
     lines.push(`販売先　${state.marketLabel}`);
     lines.push(`売価　　${state.priceLine}`);
     lines.push(`手数料　${fmtJPY(state.feeJpy)}（${state.feeNote}）`);
     lines.push(`入金額　${fmtJPY(state.payoutJpy)}`);
-    lines.push(`送料　　${fmtJPY(state.shipJpy)}`);
-    lines.push(`関税　　${fmtJPY(state.dutyJpy)}`);
+    lines.push(`送料・関税　${fmtJPY(state.shipJpy)}`);
     lines.push(`仕入（入札上限）${fmtJPY(state.bidJpy)}（${taxStatusLabel(state.taxOn)}）`);
     lines.push(`利益　　${fmtJPY(state.profitJpy)}`);
     return lines.join("\n");
   };
 
-  // ===== restore =====
   const restore = () => {
     const m = localStorage.getItem(K.market);
     if (m) marketEl.value = m;
@@ -424,9 +397,6 @@
     const s = localStorage.getItem(K.ship);
     if (s !== null) shipEl.value = s;
 
-    const d = localStorage.getItem(K.duty);
-    if (d !== null) dutyEl.value = d;
-
     const t = localStorage.getItem(K.tax);
     if (t !== null) taxCheckEl.checked = (t === "1");
 
@@ -434,7 +404,6 @@
     setRateInputStyle(eurJpyEl);
   };
 
-  // ===== calc =====
   const calc = () => {
     errMsgEl.textContent = "";
     copyMsgEl.textContent = "";
@@ -449,8 +418,7 @@
 
     const taxOn = !!taxCheckEl.checked;
     const profit = parseNum(profitEl.value) || 0;
-    const ship = parseNum(shipEl.value) || 0;
-    const duty = parseNum(dutyEl.value) || 0;
+    const ship = parseNum(shipEl.value) || 0; // 送料・関税
 
     // save cache
     localStorage.setItem(K.market, market);
@@ -458,7 +426,6 @@
     localStorage.setItem(K.tax, taxOn ? "1" : "0");
     localStorage.setItem(K.profit, String(profit));
     localStorage.setItem(K.ship, String(ship));
-    localStorage.setItem(K.duty, String(duty));
 
     if (isFinite(usdJpy) && usdJpy > 0) localStorage.setItem(K.usdJpy, String(usdJpy));
     if (isFinite(eurJpy) && eurJpy > 0) localStorage.setItem(K.eurJpy, String(eurJpy));
@@ -466,7 +433,6 @@
     setRateInputStyle(usdJpyEl);
     setRateInputStyle(eurJpyEl);
 
-    // guard
     if (!isFinite(amount) || amount <= 0) {
       bidLimitEl.textContent = "—";
       grossHintEl.textContent = "—";
@@ -475,13 +441,11 @@
       bFeeEl.textContent = "—";
       bPayoutEl.textContent = "—";
       bShipEl.textContent = "—";
-      bDutyEl.textContent = "—";
       bBidEl.textContent = "—";
       bProfitEl.textContent = "—";
       return;
     }
 
-    // need rate?
     if (active === "USD" && (!isFinite(usdJpy) || usdJpy <= 0)) {
       errMsgEl.textContent = "USD入力の場合は「1 USD = JPY」を入力してください。";
       bidLimitEl.textContent = "—";
@@ -498,7 +462,7 @@
     const feeJpy = grossJpy * feeRate;
     const payoutJpy = grossJpy - feeJpy;
 
-    let bidJpy = payoutJpy - ship - duty - profit;
+    let bidJpy = payoutJpy - ship - profit;
     if (taxOn) bidJpy = bidJpy / 1.10;
 
     let rateText = "";
@@ -510,10 +474,9 @@
 
     bMarketEl.textContent = marketLabel(market);
     bGrossEl.textContent = priceLine;
-    bFeeEl.textContent = `${fmtJPY(feeJpy)}（${feeNote}）`; // ←追加要件：括弧で内訳
+    bFeeEl.textContent = `${fmtJPY(feeJpy)}（${feeNote}）`;
     bPayoutEl.textContent = fmtJPY(payoutJpy);
     bShipEl.textContent = fmtJPY(ship);
-    bDutyEl.textContent = fmtJPY(duty);
     bBidEl.textContent = fmtJPY(bidJpy);
     bProfitEl.textContent = fmtJPY(profit);
 
@@ -527,24 +490,21 @@
       feeNote,
       payoutJpy,
       shipJpy: ship,
-      dutyJpy: duty,
       bidJpy,
       taxOn,
       profitJpy: profit,
     });
   };
 
-  // ===== events =====
   chips.forEach(b => b.addEventListener("click", () => setActive(b.dataset.cur)));
 
-  // 販売先変更 → 自動で通貨選択（手動変更OK）
   marketEl.addEventListener("change", () => {
     const m = marketEl.value;
-    const autoCur = (m === "catawiki") ? "EUR" : "JPY"; // 指定通り
-    setActive(autoCur, {fromAuto:true});
+    const autoCur = (m === "catawiki") ? "EUR" : "JPY";
+    setActive(autoCur);
   });
 
-  [amountEl, usdJpyEl, eurJpyEl, profitEl, shipEl, dutyEl, taxCheckEl].forEach(el => {
+  [amountEl, usdJpyEl, eurJpyEl, profitEl, shipEl, taxCheckEl].forEach(el => {
     el.addEventListener("input", calc);
     el.addEventListener("change", calc);
   });
@@ -573,13 +533,14 @@
     }
   });
 
-  // init
   restore();
   setActive(active);
+
   // 初回：販売先に応じて推奨通貨へ
   const initMarket = marketEl.value;
   const initCur = (initMarket === "catawiki") ? "EUR" : "JPY";
-  setActive(initCur, {fromAuto:true});
+  setActive(initCur);
+
   calc();
 })();
 </script>
