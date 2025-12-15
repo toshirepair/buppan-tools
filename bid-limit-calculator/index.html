@@ -51,7 +51,6 @@
   }
   .rateInput.filled{ background:#fff; }
 
-  /* 通貨ボタン */
   button.chip{
     border:1px solid #ccc;
     border-radius:999px;
@@ -65,7 +64,6 @@
     border-color:#111;
   }
 
-  /* 通貨記号付き入力 */
   .moneyWrap{
     display:flex;
     align-items:center;
@@ -95,7 +93,6 @@
   }
 
   .v{ font-size:1.55rem; font-weight:800; margin-top:6px; }
-  /* 仕入（入札上限）の数字を青字に */
   .bidValue{
     color:#1d4ed8;
     cursor:pointer;
@@ -131,7 +128,6 @@
   .line .r{ font-weight:600; }
   .muted{ color:#777; font-weight:500; }
   .warn{ color:#b91c1c; }
-  .ok{ color:#059669; }
 
   .linkBtn{
     border:1px solid #ccc;
@@ -145,6 +141,13 @@
     font-size:.95rem;
   }
   .linkBtn:active{ opacity:.8; }
+
+  .sectionTitle{
+    font-weight:700;
+    font-size:.92rem;
+    color:#333;
+    margin-bottom:6px;
+  }
 </style>
 </head>
 <body>
@@ -155,7 +158,7 @@
   <div class="card">
     <div class="row" style="justify-content:space-between;">
       <div class="k">① 為替レート（手動入力）</div>
-      <a class="linkBtn" href="https://www.bk.mufg.jp/ippan/rate/real.html" target="_blank" rel="noopener">
+      <a class="linkBtn" id="mufgLink" href="https://www.bk.mufg.jp/ippan/rate/real.html" target="_blank" rel="noopener">
         為替レートを見る（MUFG）
       </a>
     </div>
@@ -170,24 +173,22 @@
         <input id="eurJpy" class="input rateInput" inputmode="decimal" placeholder="例：183">
       </div>
     </div>
-
     <div class="small">※ 入力したレートは、このブラウザに自動保存されます</div>
   </div>
 
-  <!-- ② 販売先 -->
+  <!-- ② 販売先 + ③ 売価通貨・売価（同じ枠） -->
   <div class="card">
-    <div class="k">② 販売先</div>
+    <div class="sectionTitle">② 販売先・③ 売価通貨・売価</div>
+
+    <div class="k">販売先</div>
     <select id="market" class="input">
       <option value="ebay">eBay</option>
       <option value="catawiki">catawiki</option>
       <option value="domestic">ヤフオク・メルカリ</option>
     </select>
     <div class="small" id="feeNote">—</div>
-  </div>
 
-  <!-- ③ 売価通貨・売価 -->
-  <div class="card">
-    <div class="k">③ 売価通貨</div>
+    <div class="k" style="margin-top:12px;">売価通貨</div>
     <div class="row" style="margin-top:8px;">
       <button class="chip active" data-cur="JPY">JPY</button>
       <button class="chip" data-cur="USD">USD</button>
@@ -247,8 +248,6 @@
       <div class="line"><div class="l">関税</div><div class="r" id="bDuty">—</div></div>
       <div class="line"><div class="l">仕入（入札上限）</div><div class="r" id="bBid">—</div></div>
       <div class="line"><div class="l">利益</div><div class="r" id="bProfit">—</div></div>
-      <div class="line"><div class="l">利益率</div><div class="r" id="bMargin">—</div></div>
-      <div class="line" id="rebateRow" style="display:none;"><div class="l">還付金</div><div class="r" id="bRebate">—</div></div>
 
       <button class="btn" id="copyAllBtn">結果をコピー</button>
       <div class="small" id="copyAllMsg"></div>
@@ -262,15 +261,16 @@
 (() => {
   // ===== keys =====
   const K = {
-    active: "blc_active_v2",
-    market: "blc_market_v2",
-    amount: "blc_amount_v2",
-    usdJpy: "blc_usdJpy_v2",
-    eurJpy: "blc_eurJpy_v2",
-    profit: "blc_profit_v2",
-    ship: "blc_ship_v2",
-    duty: "blc_duty_v2",
-    tax: "blc_tax_v2",
+    active: "blc_active_v3",
+    market: "blc_market_v3",
+    amount: "blc_amount_v3",
+    usdJpy: "blc_usdJpy_v3",
+    eurJpy: "blc_eurJpy_v3",
+    profit: "blc_profit_v3",
+    ship: "blc_ship_v3",
+    duty: "blc_duty_v3",
+    tax: "blc_tax_v3",
+    lastFxFocus: "blc_lastFxFocus_v3", // "USD" or "EUR"
   };
 
   // ===== els =====
@@ -283,6 +283,7 @@
 
   const usdJpyEl = document.getElementById("usdJpy");
   const eurJpyEl = document.getElementById("eurJpy");
+  const mufgLink = document.getElementById("mufgLink");
 
   const taxCheckEl = document.getElementById("taxCheck");
   const profitEl = document.getElementById("profit");
@@ -301,9 +302,6 @@
   const bDutyEl = document.getElementById("bDuty");
   const bBidEl = document.getElementById("bBid");
   const bProfitEl = document.getElementById("bProfit");
-  const bMarginEl = document.getElementById("bMargin");
-  const rebateRow = document.getElementById("rebateRow");
-  const bRebateEl = document.getElementById("bRebate");
 
   const errMsgEl = document.getElementById("errMsg");
   const copyAllBtn = document.getElementById("copyAllBtn");
@@ -311,6 +309,7 @@
 
   // ===== state =====
   let active = localStorage.getItem(K.active) || "JPY";
+  let autoCurrencyByMarket = true; // ②変更時に通貨を自動選択（その後手動変更OK）
 
   // ===== helpers =====
   const parseNum = (v) => {
@@ -350,7 +349,7 @@
     el.classList.toggle("filled", (el.value || "").trim() !== "");
   };
 
-  const setActive = (cur) => {
+  const setActive = (cur, {fromAuto=false} = {}) => {
     active = cur;
     localStorage.setItem(K.active, cur);
 
@@ -360,6 +359,12 @@
     if (cur === "JPY") fxNeedHint.textContent = "※ JPY入力の場合は為替レート不要です";
     else if (cur === "USD") fxNeedHint.textContent = "※ USD入力の場合は「1 USD = JPY」が必要です";
     else fxNeedHint.textContent = "※ EUR入力の場合は「1 EUR = JPY」が必要です";
+
+    // 手動で通貨を変えたら、以後は「販売先変更での自動通貨変更」は維持するが、
+    // 直近の意思として記録しておく（MUFG戻りフォーカス用）
+    if (!fromAuto) {
+      if (cur === "USD" || cur === "EUR") localStorage.setItem(K.lastFxFocus, cur);
+    }
 
     calc();
   };
@@ -373,19 +378,6 @@
   const taxStatusLabel = (taxOn) => taxOn ? "消費税10％ ON / ストア" : "消費税10％ OFF / 個人";
 
   const buildCopyText = (state) => {
-    // 指定フォーマット
-    // Bid Limit Calculator
-    // 販売先　catawiki
-    // 売価　　€200 → ¥36,600 （1 EUR = 183 JPY）
-    // 手数料　¥5,307（Catawiki：12.5% + Payoneer：2%）
-    // 入金額　¥31,293
-    // 送料　　¥3,000
-    // 関税　　¥0
-    // 仕入（入札上限）¥18,293（消費税10％ OFF / 個人）
-    // 利益　　¥10,000
-    // 利益率　xx.x%
-    // 還付金　¥1,000（手数料+仕入の10％） ※eBay/catawikiのみ
-
     const lines = [];
     lines.push("Bid Limit Calculator");
     lines.push(`販売先　${state.marketLabel}`);
@@ -396,16 +388,10 @@
     lines.push(`関税　　${fmtJPY(state.dutyJpy)}`);
     lines.push(`仕入（入札上限）${fmtJPY(state.bidJpy)}（${taxStatusLabel(state.taxOn)}）`);
     lines.push(`利益　　${fmtJPY(state.profitJpy)}`);
-    lines.push(`利益率　${state.marginPctStr}`);
-
-    if (state.showRebate) {
-      lines.push(`還付金　${fmtJPY(state.rebateJpy)}（手数料+仕入の10％）`);
-    }
-
     return lines.join("\n");
   };
 
-  // ===== restore (cache) =====
+  // ===== restore =====
   const restore = () => {
     const m = localStorage.getItem(K.market);
     if (m) marketEl.value = m;
@@ -437,6 +423,35 @@
     feeNoteEl.textContent = feeNoteForMarket(marketEl.value);
   };
 
+  // ===== MUFG戻りフォーカス =====
+  const focusFxAfterReturn = () => {
+    // 直近の売価通貨がUSD/EURならそれを優先、そうでなければ lastFxFocus（USD/EUR）、
+    // それもなければUSDにフォーカス
+    const last = localStorage.getItem(K.lastFxFocus);
+    const target =
+      (active === "USD" || active === "EUR") ? active :
+      (last === "EUR" ? "EUR" : "USD");
+
+    const el = (target === "EUR") ? eurJpyEl : usdJpyEl;
+    // iOS/Androidでも気持ちよく
+    setTimeout(() => el.focus(), 0);
+  };
+
+  // MUFGボタン押下時に「戻った時フォーカスしたい」意思を保存
+  mufgLink.addEventListener("click", () => {
+    // USD/EURどっちにフォーカスするかを保存（今の通貨優先）
+    if (active === "EUR") localStorage.setItem(K.lastFxFocus, "EUR");
+    else localStorage.setItem(K.lastFxFocus, "USD");
+  });
+
+  // ページに戻ってきたらフォーカス（visibilitychange）
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      // MUFGから戻った可能性が高いのでフォーカス
+      focusFxAfterReturn();
+    }
+  });
+
   // ===== calc =====
   const calc = () => {
     errMsgEl.textContent = "";
@@ -444,7 +459,8 @@
     copyAllMsg.textContent = "";
 
     const market = marketEl.value;
-    feeNoteEl.textContent = feeNoteForMarket(market);
+    const feeNote = feeNoteForMarket(market);
+    feeNoteEl.textContent = feeNote;
 
     const amount = parseNum(amountEl.value);
     const usdJpy = parseNum(usdJpyEl.value);
@@ -466,7 +482,6 @@
     if (isFinite(usdJpy) && usdJpy > 0) localStorage.setItem(K.usdJpy, String(usdJpy));
     if (isFinite(eurJpy) && eurJpy > 0) localStorage.setItem(K.eurJpy, String(eurJpy));
 
-    // style
     setRateInputStyle(usdJpyEl);
     setRateInputStyle(eurJpyEl);
 
@@ -482,8 +497,6 @@
       bDutyEl.textContent = "—";
       bBidEl.textContent = "—";
       bProfitEl.textContent = "—";
-      bMarginEl.textContent = "—";
-      rebateRow.style.display = "none";
       return;
     }
 
@@ -505,68 +518,43 @@
     const payoutJpy = grossJpy - feeJpy;
 
     // 仕入（入札上限）
-    // base: 入金 - 送料 - 関税 - 利益
     let bidJpy = payoutJpy - ship - duty - profit;
-
-    // 消費税10% ONの場合：消費税込み仕入を想定 → 税抜きベースの入札上限にする
-    // ＝「支払額（税率10%込み）」を bidJpy とするなら、税抜き本体は bid/1.1
-    // → 入札額（税抜きに寄せる）として bid/1.1 に下げる
     if (taxOn) bidJpy = bidJpy / 1.10;
 
-    // 表示用：売価行（レート明記）
+    // 売価行（レート明記）
     let rateText = "";
     if (active === "USD") rateText = `（1 USD = ${usdJpy} JPY）`;
     if (active === "EUR") rateText = `（1 EUR = ${eurJpy} JPY）`;
-
     const priceLine = `${fmtCur(active, amount)} → ${fmtJPY(grossJpy)} ${rateText}`.trim();
+
     grossHintEl.textContent = `売価（${active}）${priceLine}`;
 
-    // 内訳表示（順番は指定どおり）
+    // 内訳表示：手数料に括弧追記
     bMarketEl.textContent = marketLabel(market);
     bGrossEl.textContent = priceLine;
-    bFeeEl.textContent = fmtJPY(feeJpy);
+    bFeeEl.textContent = `${fmtJPY(feeJpy)}（${feeNote}）`;
     bPayoutEl.textContent = fmtJPY(payoutJpy);
     bShipEl.textContent = fmtJPY(ship);
     bDutyEl.textContent = fmtJPY(duty);
     bBidEl.textContent = fmtJPY(bidJpy);
     bProfitEl.textContent = fmtJPY(profit);
 
-    // 利益率：利益 / 売上(円換算) * 100
-    const marginPct = grossJpy > 0 ? (profit / grossJpy) * 100 : NaN;
-    const marginPctStr = isFinite(marginPct) ? `${marginPct.toFixed(1)}%` : "—";
-    bMarginEl.textContent = marginPctStr;
-
-    // 還付金：手数料 + 仕入 の10%（eBay/catawikiのみ）
-    const showRebate = (market === "ebay" || market === "catawiki");
-    if (showRebate) {
-      const rebateJpy = (feeJpy + bidJpy) * 0.10;
-      rebateRow.style.display = "flex";
-      bRebateEl.textContent = `${fmtJPY(rebateJpy)}（手数料+仕入の10％）`;
-      // 右側だけ欲しい表示の場合、括弧はコピーに入れるので表示は控えめでもOK
-      bRebateEl.dataset.value = String(Math.round(rebateJpy));
-    } else {
-      rebateRow.style.display = "none";
-    }
-
     // 仕入（入札上限）表示（青字）
     bidLimitEl.textContent = fmtJPY(bidJpy);
     bidLimitEl.dataset.copyValue = String(Math.round(bidJpy));
 
-    // コピーテキスト生成
+    // コピーテキスト（指定フォーマット＋手数料括弧付き）
     const copyText = buildCopyText({
       marketLabel: marketLabel(market),
       priceLine,
       feeJpy,
-      feeNote: feeNoteForMarket(market),
+      feeNote,
       payoutJpy,
       shipJpy: ship,
       dutyJpy: duty,
       bidJpy,
       taxOn,
       profitJpy: profit,
-      marginPctStr,
-      showRebate,
-      rebateJpy: showRebate ? (feeJpy + bidJpy) * 0.10 : 0,
     });
     bidLimitEl.dataset.copyText = copyText;
   };
@@ -574,10 +562,27 @@
   // ===== events =====
   chips.forEach(b => b.addEventListener("click", () => setActive(b.dataset.cur)));
 
-  [amountEl, marketEl, usdJpyEl, eurJpyEl, profitEl, shipEl, dutyEl, taxCheckEl].forEach(el => {
+  // ②販売先変更 → ③通貨を自動選択（その後手動変更OK）
+  marketEl.addEventListener("change", () => {
+    const m = marketEl.value;
+    // 指定：ヤフメル→JPY / catawiki→EUR / ebay→JPY
+    const autoCur = (m === "catawiki") ? "EUR" : "JPY";
+    setActive(autoCur, {fromAuto:true});
+    // フォーカス用の記録も更新（USD/EURのみ）
+    if (autoCur === "EUR") localStorage.setItem(K.lastFxFocus, "EUR");
+    calc();
+  });
+
+  [amountEl, usdJpyEl, eurJpyEl, profitEl, shipEl, dutyEl, taxCheckEl].forEach(el => {
     el.addEventListener("input", calc);
     el.addEventListener("change", calc);
   });
+
+  // 為替欄を触ったら、戻りフォーカス先を更新
+  usdJpyEl.addEventListener("focus", () => localStorage.setItem(K.lastFxFocus, "USD"));
+  eurJpyEl.addEventListener("focus", () => localStorage.setItem(K.lastFxFocus, "EUR"));
+  usdJpyEl.addEventListener("input", () => localStorage.setItem(K.lastFxFocus, "USD"));
+  eurJpyEl.addEventListener("input", () => localStorage.setItem(K.lastFxFocus, "EUR"));
 
   // タップで「仕入（入札上限）」数値のみコピー
   bidLimitEl.addEventListener("click", async () => {
@@ -608,6 +613,12 @@
   // init
   restore();
   setActive(active);
+  // 初回も「市場→通貨」自動合わせを反映したいので一度 market change を踏む
+  // ただし既に手動で通貨を記憶しているケースもあるので、初回は market の推奨通貨を優先
+  const initMarket = marketEl.value;
+  const initCur = (initMarket === "catawiki") ? "EUR" : "JPY";
+  setActive(initCur, {fromAuto:true});
+
   calc();
 })();
 </script>
