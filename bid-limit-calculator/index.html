@@ -5,263 +5,611 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bid Limit Calculator</title>
 <style>
-*{box-sizing:border-box}
-body{
-  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
-  background:#fff;
-  margin:0;
-  padding:16px;
-}
-.wrap{max-width:760px;margin:auto}
-h1{font-size:1.35rem;margin:0 0 12px}
+  *{ box-sizing:border-box; }
+  body{
+    font-family: system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:#fff;
+    margin:0;
+    padding:16px;
+  }
+  .wrap{ max-width:760px; margin:auto; }
+  h1{ font-size:1.35rem; margin:0 0 12px; }
 
-.card{
-  border:1px solid #ddd;
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:12px;
-}
+  .card{
+    border:1px solid #ddd;
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:12px;
+    background:#fff;
+  }
+  .k{ font-size:.85rem; color:#666; }
+  .small{ font-size:.82rem; color:#777; margin-top:6px; line-height:1.35; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .grid2{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:10px;
+  }
+  @media (min-width: 680px){
+    .grid2{ grid-template-columns: 1fr 1fr; }
+  }
 
-.k{font-size:.85rem;color:#666}
-.small{font-size:.8rem;color:#777;line-height:1.4}
-.row{display:flex;gap:8px;flex-wrap:wrap}
+  .input, select{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #ccc;
+    margin-top:4px;
+    font-size:1rem;
+    background:#fff;
+  }
 
-.input,select{
-  width:100%;
-  padding:10px 12px;
-  border-radius:10px;
-  border:1px solid #ccc;
-  margin-top:4px;
-  font-size:1rem;
-}
+  /* 為替レート入力：デフォ薄グレー → 入力で白 */
+  .rateInput{
+    background:#f1f1f1;
+    transition: background .15s ease;
+  }
+  .rateInput.filled{ background:#fff; }
 
-.rateInput{
-  background:#f1f1f1;
-}
-.rateInput.filled{
-  background:#fff;
-}
+  /* 通貨ボタン */
+  button.chip{
+    border:1px solid #ccc;
+    border-radius:999px;
+    padding:8px 14px;
+    background:#f3f3f3;
+    cursor:pointer;
+  }
+  button.chip.active{
+    background:#111;
+    color:#fff;
+    border-color:#111;
+  }
 
-.moneyWrap{
-  display:flex;
-  border:1px solid #ccc;
-  border-radius:10px;
-  overflow:hidden;
-  margin-top:4px;
-}
-.prefix{
-  padding:10px 12px;
-  background:#fafafa;
-  border-right:1px solid #e5e5e5;
-  font-weight:600;
-}
-.moneyInput{
-  border:0;
-  outline:none;
-  padding:10px 12px;
-  width:100%;
-  font-size:1rem;
-}
+  /* 通貨記号付き入力 */
+  .moneyWrap{
+    display:flex;
+    align-items:center;
+    width:100%;
+    border:1px solid #ccc;
+    border-radius:10px;
+    overflow:hidden;
+    margin-top:4px;
+    background:#fff;
+  }
+  .prefix{
+    padding:10px 12px;
+    border-right:1px solid #e5e5e5;
+    color:#333;
+    background:#fafafa;
+    min-width:44px;
+    text-align:center;
+    font-weight:600;
+  }
+  .moneyInput{
+    border:0;
+    outline:none;
+    width:100%;
+    padding:10px 12px;
+    font-size:1rem;
+    background:#fff;
+  }
 
-.chip{
-  border:1px solid #ccc;
-  border-radius:999px;
-  padding:8px 14px;
-  background:#f3f3f3;
-  cursor:pointer;
-}
-.chip.active{
-  background:#111;color:#fff;border-color:#111;
-}
+  .v{ font-size:1.55rem; font-weight:800; margin-top:6px; }
+  /* 仕入（入札上限）の数字を青字に */
+  .bidValue{
+    color:#1d4ed8;
+    cursor:pointer;
+    user-select:none;
+  }
+  .bidValue:active{ opacity:.7; }
 
-.v{font-size:1.5rem;font-weight:700}
-.copyTap{cursor:pointer}
-.copyTap:active{opacity:.6}
+  .btn{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #ccc;
+    background:#f6f6f6;
+    cursor:pointer;
+    margin-top:10px;
+    font-size:0.95rem;
+  }
+  .btn:active{ opacity:.8; }
 
-.line{
-  display:flex;
-  justify-content:space-between;
-  padding:4px 0;
-  font-size:.95rem;
-}
-.line .r{font-weight:600}
+  .breakdown{
+    margin-top:10px;
+    border-top:1px solid #eee;
+    padding-top:10px;
+  }
+  .line{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:4px 0;
+    font-size:0.95rem;
+  }
+  .line .l{ color:#444; }
+  .line .r{ font-weight:600; }
+  .muted{ color:#777; font-weight:500; }
+  .warn{ color:#b91c1c; }
+  .ok{ color:#059669; }
 
-.btn{
-  width:100%;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid #ccc;
-  background:#f6f6f6;
-  margin-top:10px;
-  cursor:pointer;
-}
+  .linkBtn{
+    border:1px solid #ccc;
+    background:#fff;
+    border-radius:10px;
+    padding:9px 12px;
+    cursor:pointer;
+    text-decoration:none;
+    display:inline-block;
+    color:#111;
+    font-size:.95rem;
+  }
+  .linkBtn:active{ opacity:.8; }
 </style>
 </head>
 <body>
 <div class="wrap">
-<h1>Bid Limit Calculator</h1>
+  <h1>Bid Limit Calculator</h1>
 
-<!-- 為替 -->
-<div class="card">
-  <div class="k">① 為替レート（手動入力）</div>
+  <!-- ① 為替（手動） -->
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <div class="k">① 為替レート（手動入力）</div>
+      <a class="linkBtn" href="https://www.bk.mufg.jp/ippan/rate/real.html" target="_blank" rel="noopener">
+        為替レートを見る（MUFG）
+      </a>
+    </div>
 
-  <div class="k">1 USD = JPY</div>
-  <input id="usdJpy" class="input rateInput" placeholder="例：156">
+    <div class="grid2" style="margin-top:8px;">
+      <div>
+        <div class="k">1 USD = JPY</div>
+        <input id="usdJpy" class="input rateInput" inputmode="decimal" placeholder="例：156">
+      </div>
+      <div>
+        <div class="k">1 EUR = JPY</div>
+        <input id="eurJpy" class="input rateInput" inputmode="decimal" placeholder="例：183">
+      </div>
+    </div>
 
-  <div class="k" style="margin-top:6px">1 EUR = JPY</div>
-  <input id="eurJpy" class="input rateInput" placeholder="例：183">
-
-  <div class="small">※ 入力すると自動保存されます</div>
-</div>
-
-<!-- 販売先 -->
-<div class="card">
-  <div class="k">② 販売先</div>
-  <select id="market" class="input">
-    <option value="ebay">eBay</option>
-    <option value="catawiki">Catawiki</option>
-    <option value="domestic">ヤフオク・メルカリ</option>
-  </select>
-  <div class="small" id="feeNote"></div>
-</div>
-
-<!-- 売価 -->
-<div class="card">
-  <div class="k">③ 売価通貨・売価</div>
-  <div class="row">
-    <button class="chip active" data-cur="JPY">JPY</button>
-    <button class="chip" data-cur="USD">USD</button>
-    <button class="chip" data-cur="EUR">EUR</button>
+    <div class="small">※ 入力したレートは、このブラウザに自動保存されます</div>
   </div>
 
-  <div class="moneyWrap">
-    <div class="prefix" id="prefix">¥</div>
-    <input id="amount" class="moneyInput" placeholder="例：20000">
-  </div>
-</div>
-
-<!-- 利益・コスト -->
-<div class="card">
-  <div class="k">④ 利益・コスト</div>
-
-  <div class="k">利益（JPY）</div>
-  <input id="profit" class="input" value="10000">
-
-  <div class="k" style="margin-top:6px">
-    <label>
-      <input type="checkbox" id="taxCheck">
-      消費税10％ ※ストア出品者から買う時に入力する
-    </label>
+  <!-- ② 販売先 -->
+  <div class="card">
+    <div class="k">② 販売先</div>
+    <select id="market" class="input">
+      <option value="ebay">eBay</option>
+      <option value="catawiki">catawiki</option>
+      <option value="domestic">ヤフオク・メルカリ</option>
+    </select>
+    <div class="small" id="feeNote">—</div>
   </div>
 
-  <div class="k" style="margin-top:6px">送料（JPY）※送料込みで売る時に入力する</div>
-  <input id="ship" class="input" value="0">
+  <!-- ③ 売価通貨・売価 -->
+  <div class="card">
+    <div class="k">③ 売価通貨</div>
+    <div class="row" style="margin-top:8px;">
+      <button class="chip active" data-cur="JPY">JPY</button>
+      <button class="chip" data-cur="USD">USD</button>
+      <button class="chip" data-cur="EUR">EUR</button>
+    </div>
 
-  <div class="k" style="margin-top:6px">関税（JPY）※DDPセラー払いの時に入力する</div>
-  <input id="duty" class="input" value="0">
-</div>
+    <div class="k" style="margin-top:10px;">売価</div>
+    <div class="moneyWrap">
+      <div class="prefix" id="amountPrefix">¥</div>
+      <input id="amount" class="moneyInput" inputmode="decimal" placeholder="例：20000">
+    </div>
+    <div class="small" id="fxNeedHint"></div>
+  </div>
 
-<!-- 結果 -->
-<div class="card">
-  <div class="k">仕入（入札上限）※タップでコピー</div>
-  <div class="v copyTap" id="bid">—</div>
+  <!-- ④ 利益・コスト -->
+  <div class="card">
+    <div class="k">④ 利益・コスト</div>
 
-  <div class="small" id="breakTitle" style="margin-top:8px">内訳（円換算）</div>
+    <div class="k" style="margin-top:8px;">
+      <label>
+        <input type="checkbox" id="taxCheck">
+        消費税10％ ※ストア出品者から買う時に入力する
+      </label>
+    </div>
 
-  <div class="line"><div>販売先</div><div class="r" id="bMarket">—</div></div>
-  <div class="line"><div>売価</div><div class="r" id="bGross">—</div></div>
-  <div class="line"><div>手数料</div><div class="r" id="bFee">—</div></div>
-  <div class="line"><div>入金額</div><div class="r" id="bPayout">—</div></div>
-  <div class="line"><div>送料</div><div class="r" id="bShip">—</div></div>
-  <div class="line"><div>関税</div><div class="r" id="bDuty">—</div></div>
-  <div class="line"><div>仕入（入札上限）</div><div class="r" id="bBid">—</div></div>
-  <div class="line"><div>利益</div><div class="r" id="bProfit">—</div></div>
+    <div class="grid2" style="margin-top:10px;">
+      <div>
+        <div class="k">利益（JPY）</div>
+        <input id="profit" class="input" inputmode="decimal" value="10000">
+      </div>
+      <div>
+        <div class="k">送料（JPY）※送料込みで売る時に入力する</div>
+        <input id="ship" class="input" inputmode="decimal" value="0">
+      </div>
+      <div style="grid-column:1 / -1;">
+        <div class="k">関税（JPY）※DDPセラー払いの時に入力する</div>
+        <input id="duty" class="input" inputmode="decimal" value="0">
+      </div>
+    </div>
+  </div>
 
-  <button class="btn" id="copyAll">結果をコピー</button>
-  <div class="small" id="copyMsg"></div>
-</div>
+  <!-- 結果 -->
+  <div class="card">
+    <div class="k">仕入（入札上限）※タップでコピー</div>
+    <div class="v bidValue" id="bidLimit">—</div>
+    <div class="small" id="copyMsg"></div>
+
+    <div class="breakdown">
+      <div class="k">内訳（円換算）</div>
+      <div class="small muted" id="grossHint">—</div>
+
+      <div class="line"><div class="l">販売先</div><div class="r" id="bMarket">—</div></div>
+      <div class="line"><div class="l">売価</div><div class="r" id="bGross">—</div></div>
+      <div class="line"><div class="l">手数料</div><div class="r" id="bFee">—</div></div>
+      <div class="line"><div class="l">入金額</div><div class="r" id="bPayout">—</div></div>
+      <div class="line"><div class="l">送料</div><div class="r" id="bShip">—</div></div>
+      <div class="line"><div class="l">関税</div><div class="r" id="bDuty">—</div></div>
+      <div class="line"><div class="l">仕入（入札上限）</div><div class="r" id="bBid">—</div></div>
+      <div class="line"><div class="l">利益</div><div class="r" id="bProfit">—</div></div>
+      <div class="line"><div class="l">利益率</div><div class="r" id="bMargin">—</div></div>
+      <div class="line" id="rebateRow" style="display:none;"><div class="l">還付金</div><div class="r" id="bRebate">—</div></div>
+
+      <button class="btn" id="copyAllBtn">結果をコピー</button>
+      <div class="small" id="copyAllMsg"></div>
+
+      <div class="small warn" id="errMsg"></div>
+    </div>
+  </div>
 </div>
 
 <script>
-const $=id=>document.getElementById(id);
-const chips=document.querySelectorAll(".chip");
-let cur="JPY";
+(() => {
+  // ===== keys =====
+  const K = {
+    active: "blc_active_v2",
+    market: "blc_market_v2",
+    amount: "blc_amount_v2",
+    usdJpy: "blc_usdJpy_v2",
+    eurJpy: "blc_eurJpy_v2",
+    profit: "blc_profit_v2",
+    ship: "blc_ship_v2",
+    duty: "blc_duty_v2",
+    tax: "blc_tax_v2",
+  };
 
-function feeRate(m){
-  if(m==="ebay")return .17;
-  if(m==="catawiki")return .145;
-  return .10;
-}
+  // ===== els =====
+  const chips = document.querySelectorAll(".chip");
+  const amountPrefix = document.getElementById("amountPrefix");
+  const amountEl = document.getElementById("amount");
+  const marketEl = document.getElementById("market");
+  const feeNoteEl = document.getElementById("feeNote");
+  const fxNeedHint = document.getElementById("fxNeedHint");
 
-function feeNote(m){
-  if(m==="ebay")return"eBay：15% + Payoneer：2%";
-  if(m==="catawiki")return"Catawiki：12.5% + Payoneer：2%";
-  return"ヤフオク・メルカリ：10%";
-}
+  const usdJpyEl = document.getElementById("usdJpy");
+  const eurJpyEl = document.getElementById("eurJpy");
 
-function calc(){
-  const a=+$("amount").value||0;
-  const u=+$("usdJpy").value||0;
-  const e=+$("eurJpy").value||0;
-  const p=+$("profit").value||0;
-  const s=+$("ship").value||0;
-  const d=+$("duty").value||0;
-  const tax=$("taxCheck").checked;
-  const m=$("market").value;
+  const taxCheckEl = document.getElementById("taxCheck");
+  const profitEl = document.getElementById("profit");
+  const shipEl = document.getElementById("ship");
+  const dutyEl = document.getElementById("duty");
 
-  $("feeNote").textContent=feeNote(m);
-  $("bMarket").textContent=m==="domestic"?"ヤフオク・メルカリ":m;
+  const bidLimitEl = document.getElementById("bidLimit");
+  const copyMsgEl = document.getElementById("copyMsg");
 
-  if(!a)return;
+  const grossHintEl = document.getElementById("grossHint");
+  const bMarketEl = document.getElementById("bMarket");
+  const bGrossEl = document.getElementById("bGross");
+  const bFeeEl = document.getElementById("bFee");
+  const bPayoutEl = document.getElementById("bPayout");
+  const bShipEl = document.getElementById("bShip");
+  const bDutyEl = document.getElementById("bDuty");
+  const bBidEl = document.getElementById("bBid");
+  const bProfitEl = document.getElementById("bProfit");
+  const bMarginEl = document.getElementById("bMargin");
+  const rebateRow = document.getElementById("rebateRow");
+  const bRebateEl = document.getElementById("bRebate");
 
-  let gross=a;
-  let rateText="";
-  if(cur==="USD"){gross=a*u;rateText=`（1 USD = ${u} JPY）`}
-  if(cur==="EUR"){gross=a*e;rateText=`（1 EUR = ${e} JPY）`}
+  const errMsgEl = document.getElementById("errMsg");
+  const copyAllBtn = document.getElementById("copyAllBtn");
+  const copyAllMsg = document.getElementById("copyAllMsg");
 
-  const fee=gross*feeRate(m);
-  let payout=gross-fee;
-  let bid=payout-s-d-p;
-  if(tax) bid=bid/1.1;
+  // ===== state =====
+  let active = localStorage.getItem(K.active) || "JPY";
 
-  $("bid").textContent=`¥${Math.round(bid).toLocaleString()}`;
-  $("bBid").textContent=$("bid").textContent;
-  $("bProfit").textContent=`¥${p.toLocaleString()}`;
-  $("bShip").textContent=`¥${s.toLocaleString()}`;
-  $("bDuty").textContent=`¥${d.toLocaleString()}`;
-  $("bFee").textContent=`¥${Math.round(fee).toLocaleString()}`;
-  $("bPayout").textContent=`¥${Math.round(payout).toLocaleString()}`;
-  $("bGross").textContent=
-    `${cur==="JPY"?"¥":cur==="USD"?"$":"€"}${a} → ¥${Math.round(gross).toLocaleString()} ${rateText}`;
-}
+  // ===== helpers =====
+  const parseNum = (v) => {
+    const s = String(v ?? "").replace(/[¥$€,\s]/g, "").replace(/[^\d.-]/g, "");
+    return s ? Number(s) : NaN;
+  };
 
-chips.forEach(c=>{
-  c.onclick=()=>{
-    chips.forEach(x=>x.classList.remove("active"));
-    c.classList.add("active");
-    cur=c.dataset.cur;
-    $("prefix").textContent=cur==="JPY"?"¥":cur==="USD"?"$":"€";
+  const fmtJPY = (n) => isFinite(n) ? ("¥" + Math.round(n).toLocaleString()) : "—";
+  const fmtCur = (cur, n) => {
+    if (!isFinite(n)) return "—";
+    const opt = { style:"currency", currency: cur };
+    if (cur === "JPY") opt.maximumFractionDigits = 0;
+    return new Intl.NumberFormat("ja-JP", opt).format(n);
+  };
+
+  const curSymbol = (cur) => cur === "JPY" ? "¥" : (cur === "USD" ? "$" : "€");
+
+  const feeNoteForMarket = (m) => {
+    if (m === "ebay") return "eBay：15% + Payoneer：2%";
+    if (m === "catawiki") return "Catawiki：12.5% + Payoneer：2%";
+    return "ヤフオク・メルカリ：10%";
+  };
+
+  const feeRateForMarket = (m) => {
+    if (m === "ebay") return 0.15 + 0.02;
+    if (m === "catawiki") return 0.125 + 0.02;
+    return 0.10;
+  };
+
+  const marketLabel = (m) => {
+    if (m === "ebay") return "ebay";
+    if (m === "catawiki") return "catawiki";
+    return "ヤフオク・メルカリ";
+  };
+
+  const setRateInputStyle = (el) => {
+    el.classList.toggle("filled", (el.value || "").trim() !== "");
+  };
+
+  const setActive = (cur) => {
+    active = cur;
+    localStorage.setItem(K.active, cur);
+
+    chips.forEach(b => b.classList.toggle("active", b.dataset.cur === cur));
+    amountPrefix.textContent = curSymbol(cur);
+
+    if (cur === "JPY") fxNeedHint.textContent = "※ JPY入力の場合は為替レート不要です";
+    else if (cur === "USD") fxNeedHint.textContent = "※ USD入力の場合は「1 USD = JPY」が必要です";
+    else fxNeedHint.textContent = "※ EUR入力の場合は「1 EUR = JPY」が必要です";
+
     calc();
   };
-});
 
-["amount","usdJpy","eurJpy","profit","ship","duty","market","taxCheck"]
-.forEach(id=>$(id).addEventListener("input",calc));
+  const toJPY = (amount, cur, usdJpy, eurJpy) => {
+    if (cur === "JPY") return amount;
+    if (cur === "USD") return amount * usdJpy;
+    return amount * eurJpy;
+  };
 
-["usdJpy","eurJpy"].forEach(id=>{
-  $(id).addEventListener("input",e=>{
-    e.target.classList.toggle("filled",e.target.value!=="");
+  const taxStatusLabel = (taxOn) => taxOn ? "消費税10％ ON / ストア" : "消費税10％ OFF / 個人";
+
+  const buildCopyText = (state) => {
+    // 指定フォーマット
+    // Bid Limit Calculator
+    // 販売先　catawiki
+    // 売価　　€200 → ¥36,600 （1 EUR = 183 JPY）
+    // 手数料　¥5,307（Catawiki：12.5% + Payoneer：2%）
+    // 入金額　¥31,293
+    // 送料　　¥3,000
+    // 関税　　¥0
+    // 仕入（入札上限）¥18,293（消費税10％ OFF / 個人）
+    // 利益　　¥10,000
+    // 利益率　xx.x%
+    // 還付金　¥1,000（手数料+仕入の10％） ※eBay/catawikiのみ
+
+    const lines = [];
+    lines.push("Bid Limit Calculator");
+    lines.push(`販売先　${state.marketLabel}`);
+    lines.push(`売価　　${state.priceLine}`);
+    lines.push(`手数料　${fmtJPY(state.feeJpy)}（${state.feeNote}）`);
+    lines.push(`入金額　${fmtJPY(state.payoutJpy)}`);
+    lines.push(`送料　　${fmtJPY(state.shipJpy)}`);
+    lines.push(`関税　　${fmtJPY(state.dutyJpy)}`);
+    lines.push(`仕入（入札上限）${fmtJPY(state.bidJpy)}（${taxStatusLabel(state.taxOn)}）`);
+    lines.push(`利益　　${fmtJPY(state.profitJpy)}`);
+    lines.push(`利益率　${state.marginPctStr}`);
+
+    if (state.showRebate) {
+      lines.push(`還付金　${fmtJPY(state.rebateJpy)}（手数料+仕入の10％）`);
+    }
+
+    return lines.join("\n");
+  };
+
+  // ===== restore (cache) =====
+  const restore = () => {
+    const m = localStorage.getItem(K.market);
+    if (m) marketEl.value = m;
+
+    const a = localStorage.getItem(K.amount);
+    if (a) amountEl.value = a;
+
+    const uj = localStorage.getItem(K.usdJpy);
+    if (uj) usdJpyEl.value = uj;
+
+    const ej = localStorage.getItem(K.eurJpy);
+    if (ej) eurJpyEl.value = ej;
+
+    const p = localStorage.getItem(K.profit);
+    if (p !== null) profitEl.value = p;
+
+    const s = localStorage.getItem(K.ship);
+    if (s !== null) shipEl.value = s;
+
+    const d = localStorage.getItem(K.duty);
+    if (d !== null) dutyEl.value = d;
+
+    const t = localStorage.getItem(K.tax);
+    if (t !== null) taxCheckEl.checked = (t === "1");
+
+    setRateInputStyle(usdJpyEl);
+    setRateInputStyle(eurJpyEl);
+
+    feeNoteEl.textContent = feeNoteForMarket(marketEl.value);
+  };
+
+  // ===== calc =====
+  const calc = () => {
+    errMsgEl.textContent = "";
+    copyMsgEl.textContent = "";
+    copyAllMsg.textContent = "";
+
+    const market = marketEl.value;
+    feeNoteEl.textContent = feeNoteForMarket(market);
+
+    const amount = parseNum(amountEl.value);
+    const usdJpy = parseNum(usdJpyEl.value);
+    const eurJpy = parseNum(eurJpyEl.value);
+
+    const taxOn = !!taxCheckEl.checked;
+    const profit = parseNum(profitEl.value) || 0;
+    const ship = parseNum(shipEl.value) || 0;
+    const duty = parseNum(dutyEl.value) || 0;
+
+    // save cache
+    localStorage.setItem(K.market, market);
+    localStorage.setItem(K.amount, String(isFinite(amount) ? amount : ""));
+    localStorage.setItem(K.tax, taxOn ? "1" : "0");
+    localStorage.setItem(K.profit, String(profit));
+    localStorage.setItem(K.ship, String(ship));
+    localStorage.setItem(K.duty, String(duty));
+
+    if (isFinite(usdJpy) && usdJpy > 0) localStorage.setItem(K.usdJpy, String(usdJpy));
+    if (isFinite(eurJpy) && eurJpy > 0) localStorage.setItem(K.eurJpy, String(eurJpy));
+
+    // style
+    setRateInputStyle(usdJpyEl);
+    setRateInputStyle(eurJpyEl);
+
+    // guard
+    if (!isFinite(amount) || amount <= 0) {
+      bidLimitEl.textContent = "—";
+      grossHintEl.textContent = "—";
+      bMarketEl.textContent = "—";
+      bGrossEl.textContent = "—";
+      bFeeEl.textContent = "—";
+      bPayoutEl.textContent = "—";
+      bShipEl.textContent = "—";
+      bDutyEl.textContent = "—";
+      bBidEl.textContent = "—";
+      bProfitEl.textContent = "—";
+      bMarginEl.textContent = "—";
+      rebateRow.style.display = "none";
+      return;
+    }
+
+    // need rate?
+    if (active === "USD" && (!isFinite(usdJpy) || usdJpy <= 0)) {
+      errMsgEl.textContent = "USD入力の場合は「1 USD = JPY」を入力してください。";
+      bidLimitEl.textContent = "—";
+      return;
+    }
+    if (active === "EUR" && (!isFinite(eurJpy) || eurJpy <= 0)) {
+      errMsgEl.textContent = "EUR入力の場合は「1 EUR = JPY」を入力してください。";
+      bidLimitEl.textContent = "—";
+      return;
+    }
+
+    const grossJpy = toJPY(amount, active, usdJpy, eurJpy);
+    const feeRate = feeRateForMarket(market);
+    const feeJpy = grossJpy * feeRate;
+    const payoutJpy = grossJpy - feeJpy;
+
+    // 仕入（入札上限）
+    // base: 入金 - 送料 - 関税 - 利益
+    let bidJpy = payoutJpy - ship - duty - profit;
+
+    // 消費税10% ONの場合：消費税込み仕入を想定 → 税抜きベースの入札上限にする
+    // ＝「支払額（税率10%込み）」を bidJpy とするなら、税抜き本体は bid/1.1
+    // → 入札額（税抜きに寄せる）として bid/1.1 に下げる
+    if (taxOn) bidJpy = bidJpy / 1.10;
+
+    // 表示用：売価行（レート明記）
+    let rateText = "";
+    if (active === "USD") rateText = `（1 USD = ${usdJpy} JPY）`;
+    if (active === "EUR") rateText = `（1 EUR = ${eurJpy} JPY）`;
+
+    const priceLine = `${fmtCur(active, amount)} → ${fmtJPY(grossJpy)} ${rateText}`.trim();
+    grossHintEl.textContent = `売価（${active}）${priceLine}`;
+
+    // 内訳表示（順番は指定どおり）
+    bMarketEl.textContent = marketLabel(market);
+    bGrossEl.textContent = priceLine;
+    bFeeEl.textContent = fmtJPY(feeJpy);
+    bPayoutEl.textContent = fmtJPY(payoutJpy);
+    bShipEl.textContent = fmtJPY(ship);
+    bDutyEl.textContent = fmtJPY(duty);
+    bBidEl.textContent = fmtJPY(bidJpy);
+    bProfitEl.textContent = fmtJPY(profit);
+
+    // 利益率：利益 / 売上(円換算) * 100
+    const marginPct = grossJpy > 0 ? (profit / grossJpy) * 100 : NaN;
+    const marginPctStr = isFinite(marginPct) ? `${marginPct.toFixed(1)}%` : "—";
+    bMarginEl.textContent = marginPctStr;
+
+    // 還付金：手数料 + 仕入 の10%（eBay/catawikiのみ）
+    const showRebate = (market === "ebay" || market === "catawiki");
+    if (showRebate) {
+      const rebateJpy = (feeJpy + bidJpy) * 0.10;
+      rebateRow.style.display = "flex";
+      bRebateEl.textContent = `${fmtJPY(rebateJpy)}（手数料+仕入の10％）`;
+      // 右側だけ欲しい表示の場合、括弧はコピーに入れるので表示は控えめでもOK
+      bRebateEl.dataset.value = String(Math.round(rebateJpy));
+    } else {
+      rebateRow.style.display = "none";
+    }
+
+    // 仕入（入札上限）表示（青字）
+    bidLimitEl.textContent = fmtJPY(bidJpy);
+    bidLimitEl.dataset.copyValue = String(Math.round(bidJpy));
+
+    // コピーテキスト生成
+    const copyText = buildCopyText({
+      marketLabel: marketLabel(market),
+      priceLine,
+      feeJpy,
+      feeNote: feeNoteForMarket(market),
+      payoutJpy,
+      shipJpy: ship,
+      dutyJpy: duty,
+      bidJpy,
+      taxOn,
+      profitJpy: profit,
+      marginPctStr,
+      showRebate,
+      rebateJpy: showRebate ? (feeJpy + bidJpy) * 0.10 : 0,
+    });
+    bidLimitEl.dataset.copyText = copyText;
+  };
+
+  // ===== events =====
+  chips.forEach(b => b.addEventListener("click", () => setActive(b.dataset.cur)));
+
+  [amountEl, marketEl, usdJpyEl, eurJpyEl, profitEl, shipEl, dutyEl, taxCheckEl].forEach(el => {
+    el.addEventListener("input", calc);
+    el.addEventListener("change", calc);
   });
-});
 
-$("bid").onclick=()=>{
-  navigator.clipboard.writeText($("bid").textContent.replace(/[¥,]/g,""));
-};
+  // タップで「仕入（入札上限）」数値のみコピー
+  bidLimitEl.addEventListener("click", async () => {
+    const v = bidLimitEl.dataset.copyValue;
+    if (!v) return;
+    try{
+      await navigator.clipboard.writeText(v);
+      copyMsgEl.textContent = "コピーしました（仕入 / 入札上限）";
+      setTimeout(()=>copyMsgEl.textContent="",1200);
+    }catch{
+      copyMsgEl.textContent = "コピーに失敗しました（ブラウザ制限の可能性）";
+    }
+  });
 
-$("copyAll").onclick=()=>{
-  navigator.clipboard.writeText(document.querySelector(".card:last-child").innerText);
-  $("copyMsg").textContent="コピーしました";
-};
+  // 結果をコピー（指定フォーマット）
+  copyAllBtn.addEventListener("click", async () => {
+    const text = bidLimitEl.dataset.copyText;
+    if (!text) return;
+    try{
+      await navigator.clipboard.writeText(text);
+      copyAllMsg.textContent = "コピーしました";
+      setTimeout(()=>copyAllMsg.textContent="",1200);
+    }catch{
+      copyAllMsg.textContent = "コピーに失敗しました（ブラウザ制限の可能性）";
+    }
+  });
+
+  // init
+  restore();
+  setActive(active);
+  calc();
+})();
 </script>
 </body>
 </html>
