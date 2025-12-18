@@ -159,16 +159,54 @@
   .line .r{ font-weight:600; }
   .warn{ color:#b91c1c; }
 
+  /* ③を閉じた時に「分厚く見える」原因を潰す：ヘッダーの行高を固定＆右ボタン小型化 */
+  .cardHeader{
+    display:flex;
+    align-items:center;          /* ← centerで高さが揃う */
+    justify-content:space-between;
+    gap:10px;
+    min-height:28px;            /* ← 折りたたみ時の基準高さ */
+  }
+  .headerLeft{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+  }
+  .headerRight{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:nowrap;           /* ← 折りたたみ時に縦に伸びにくい */
+  }
+
+  .foldBtn{
+    border:1px solid #ccc;
+    background:#fff;
+    border-radius:10px;
+    padding:4px 8px;
+    cursor:pointer;
+    font-size:.9rem;
+    line-height:1;
+    height:28px;                /* ← 高さを固定して揃える */
+    min-width:34px;
+  }
+  .foldBtn:active{ opacity:.8; }
+  .foldBody.hidden{ display:none; }
+
   .linkBtn{
     border:1px solid #ccc;
     background:#fff;
     border-radius:10px;
-    padding:9px 12px;
+    padding:6px 10px;          /* ← 小さく */
     cursor:pointer;
     text-decoration:none;
-    display:inline-block;
+    display:inline-flex;
+    align-items:center;
     color:#111;
-    font-size:.95rem;
+    font-size:.85rem;          /* ← 小さく */
+    height:28px;               /* ← foldBtnと同じ高さに */
+    white-space:nowrap;
   }
   .linkBtn:active{ opacity:.8; }
 
@@ -189,39 +227,6 @@
     user-select:none;
   }
   .clearLink:active{ opacity:.7; }
-
-  /* 高さが伸びないようにヘッダーを詰める（③の見た目を②寄せ） */
-  .cardHeader{
-    display:flex;
-    align-items:flex-start;
-    justify-content:space-between;
-    gap:10px;
-  }
-  .headerLeft{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    min-width:0;
-  }
-  .headerRight{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    justify-content:flex-end;
-  }
-
-  .foldBtn{
-    border:1px solid #ccc;
-    background:#fff;
-    border-radius:10px;
-    padding:4px 8px;
-    cursor:pointer;
-    font-size:.9rem;
-    line-height:1;
-    height:28px;
-  }
-  .foldBtn:active{ opacity:.8; }
-  .foldBody.hidden{ display:none; }
 </style>
 </head>
 <body>
@@ -268,8 +273,7 @@
     </div>
     <div class="moneyWrap">
       <div class="prefix" id="amountPrefix">¥</div>
-      <!-- 売価も必須扱いで softInput -->
-      <input id="amount" class="moneyInput softInput" inputmode="decimal" placeholder="例：20000">
+      <input id="amount" class="moneyInput softInput" inputmode="decimal" enterkeyhint="next" placeholder="例：20000">
     </div>
 
     <div class="small" id="fxHint"></div>
@@ -294,7 +298,7 @@
       <div class="grid2Always" style="margin-top:10px;">
         <div>
           <div class="k">利益（JPY）</div>
-          <input id="profit" class="input softInput" inputmode="decimal" placeholder="例：10000">
+          <input id="profit" class="input softInput" inputmode="decimal" enterkeyhint="next" placeholder="例：10000">
         </div>
         <div>
           <div class="k">送料・関税（JPY）</div>
@@ -337,11 +341,11 @@
       <div class="grid2Always" style="margin-top:8px;">
         <div>
           <div class="k">1 USD = JPY</div>
-          <input id="usdJpy" class="input softInput" inputmode="decimal" placeholder="例：156">
+          <input id="usdJpy" class="input softInput" inputmode="decimal" enterkeyhint="next" placeholder="例：156">
         </div>
         <div>
           <div class="k">1 EUR = JPY</div>
-          <input id="eurJpy" class="input softInput" inputmode="decimal" placeholder="例：183">
+          <input id="eurJpy" class="input softInput" inputmode="decimal" enterkeyhint="done" placeholder="例：183">
         </div>
       </div>
       <div class="small">※ 入力したレートは、このブラウザに自動保存されます</div>
@@ -386,19 +390,19 @@
 <script>
 (() => {
   const SK = {
-    market: "blc_market_v16",
-    active: "blc_active_v16",
-    amount: "blc_amount_v16",
-    profit: "blc_profit_v16",
-    ship: "blc_ship_v16",
-    usdJpy: "blc_usdJpy_v16",
-    eurJpy: "blc_eurJpy_v16",
-    tax: "blc_tax_v16",
-    purchase: "blc_purchase_v16",
-    feeAdjust: "blc_feeAdjust_v16",
-    cProfit: "blc_collapse_profit_v16",
-    cFx: "blc_collapse_fx_v16",
-    cRes: "blc_collapse_res_v16",
+    market: "blc_market_v17",
+    active: "blc_active_v17",
+    amount: "blc_amount_v17",
+    profit: "blc_profit_v17",
+    ship: "blc_ship_v17",
+    usdJpy: "blc_usdJpy_v17",
+    eurJpy: "blc_eurJpy_v17",
+    tax: "blc_tax_v17",
+    purchase: "blc_purchase_v17",
+    feeAdjust: "blc_feeAdjust_v17",
+    cProfit: "blc_collapse_profit_v17",
+    cFx: "blc_collapse_fx_v17",
+    cRes: "blc_collapse_res_v17",
   };
 
   const marketEl = document.getElementById("market");
@@ -481,7 +485,6 @@
   };
 
   let active = "JPY";
-
   const autoCurrencyByMarket = (m) => (m === "catawiki") ? "EUR" : "JPY";
 
   const setActive = (cur, {focusAmount=false}={}) => {
@@ -489,7 +492,7 @@
     localStorage.setItem(SK.active, cur);
     chips.forEach(c => c.classList.toggle("active", c.dataset.cur === cur));
     amountPrefix.textContent = sym(cur);
-    calc({allowAutoFocus:false}); // 通貨変更時に変な移動を防ぐ
+    calc();
     if (focusAmount) focusTo(amountEl);
   };
 
@@ -532,18 +535,14 @@
     rDate.textContent = "—";
   };
 
-  // ---- 自動フォーカス制御（必須：売価→利益→USD→EUR）
-  // ルール：ターゲットが「未入力（softInput で filled じゃない）」の時だけ飛ぶ
+  // ---- 自動フォーカス（Enter/完了/次へ + blur のみ）
   const isUnfilledSoft = (el) => el && el.classList.contains("softInput") && !el.classList.contains("filled");
 
   const autoFocusAfter = (sourceEl) => {
-    // 必須順
     const seq = [amountEl, profitEl, usdEl, eurEl];
-
     const idx = seq.indexOf(sourceEl);
     if (idx < 0) return;
 
-    // 次の「未入力必須」へ
     for (let i = idx + 1; i < seq.length; i++){
       const target = seq[i];
       if (isUnfilledSoft(target)) {
@@ -553,12 +552,17 @@
     }
   };
 
-  const calc = ({allowAutoFocus=true}={}) => {
+  const focusOnCommit = (sourceEl) => {
+    calc();
+    autoFocusAfter(sourceEl);
+  };
+
+  const calc = () => {
     errMsg.textContent = "";
     copyAllMsg.textContent = "";
     copyMsgTop.textContent = "";
 
-    // 必須の filled 更新（売価/利益/USD/EUR）
+    // 必須 filled 更新
     setSoft(amountEl);
     setSoft(profitEl);
     setSoft(usdEl);
@@ -705,8 +709,6 @@
     copyLines.push(`日付　${nowDate()}`);
 
     bidTop.dataset.copyText = copyLines.join("\n");
-
-    // 自動フォーカスはイベント側で制御（ここでは触らない）
   };
 
   // ---- folds
@@ -737,27 +739,49 @@
     setActive(cur, {focusAmount:true});
   });
 
-  // 重要：入力イベントで「未入力必須だけ」自動フォーカス
-  const onInputWithAuto = (el) => {
-    calc({allowAutoFocus:true});
-    // 必須でまだ未入力が残る場合のみ次へ
-    autoFocusAfter(el);
+  // ★ input では自動フォーカスしない（計算だけ）
+  amountEl.addEventListener("input", calc);
+  profitEl.addEventListener("input", calc);
+  usdEl.addEventListener("input", calc);
+  eurEl.addEventListener("input", calc);
+
+  // ★ Enter / 完了・次へ で次へ + 保険の blur（次に未入力必須がある時だけ）
+  const bindCommit = (el) => {
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        focusOnCommit(el);
+      }
+    });
+    el.addEventListener("blur", () => {
+      // 空欄は飛ばさない
+      if (String(el.value ?? "").trim() === "") return;
+
+      // 「次に未入力必須がある場合だけ」飛ぶ（＝2回目以降はほぼ動かない）
+      const nextExists =
+        (el === amountEl && isUnfilledSoft(profitEl)) ||
+        (el === profitEl && isUnfilledSoft(usdEl)) ||
+        (el === usdEl && isUnfilledSoft(eurEl)) ||
+        (el === eurEl && false);
+
+      if (!nextExists) return;
+
+      focusOnCommit(el);
+    });
   };
+  bindCommit(amountEl);
+  bindCommit(profitEl);
+  bindCommit(usdEl);
+  bindCommit(eurEl);
 
-  amountEl.addEventListener("input", () => onInputWithAuto(amountEl));
-  profitEl.addEventListener("input", () => onInputWithAuto(profitEl));
-  usdEl.addEventListener("input", () => onInputWithAuto(usdEl));
-  eurEl.addEventListener("input", () => onInputWithAuto(eurEl));
-
-  // 他の入力は計算のみ（自動フォーカスなし）
-  [shipEl, taxEl, purchaseEl, feeAdjustEl].forEach(el => el.addEventListener("input", () => calc({allowAutoFocus:true})));
+  // 他の入力は計算のみ
+  [shipEl, taxEl, purchaseEl, feeAdjustEl].forEach(el => el.addEventListener("input", calc));
 
   clearAmountEl.addEventListener("click", () => {
     amountEl.value = "";
     localStorage.setItem(SK.amount, "");
-    // 売価クリアしたら必須に戻る
     setSoft(amountEl);
-    calc({allowAutoFocus:false});
+    calc();
     focusTo(amountEl);
   });
 
@@ -826,7 +850,6 @@
 
     applyCollapse();
 
-    // 必須のfilled反映（売価/利益/USD/EUR）
     setSoft(amountEl);
     setSoft(profitEl);
     setSoft(usdEl);
@@ -834,7 +857,7 @@
   };
 
   restore();
-  calc({allowAutoFocus:false});
+  calc();
 })();
 </script>
 </body>
