@@ -50,6 +50,7 @@
     background:#fff;
   }
 
+  /* 必須入力（未入力）は薄グレー → 入力したら白 */
   .softInput{
     background:#f1f1f1;
     transition: background .15s ease;
@@ -106,6 +107,9 @@
     font-size:1rem;
     background:#fff;
   }
+  /* 売価も必須として薄グレー運用 */
+  .moneyInput.softInput{ background:#f1f1f1; }
+  .moneyInput.softInput.filled{ background:#fff; }
 
   .v{ font-size:1.55rem; font-weight:800; margin-top:6px; }
   .bidValue{
@@ -186,18 +190,26 @@
   }
   .clearLink:active{ opacity:.7; }
 
+  /* 高さが伸びないようにヘッダーを詰める（③の見た目を②寄せ） */
   .cardHeader{
     display:flex;
-    align-items:center;
+    align-items:flex-start;
     justify-content:space-between;
     gap:10px;
   }
-  .foldLeft{
+  .headerLeft{
     display:flex;
     align-items:center;
     gap:8px;
     min-width:0;
   }
+  .headerRight{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+
   .foldBtn{
     border:1px solid #ccc;
     background:#fff;
@@ -206,6 +218,7 @@
     cursor:pointer;
     font-size:.9rem;
     line-height:1;
+    height:28px;
   }
   .foldBtn:active{ opacity:.8; }
   .foldBody.hidden{ display:none; }
@@ -255,7 +268,8 @@
     </div>
     <div class="moneyWrap">
       <div class="prefix" id="amountPrefix">¥</div>
-      <input id="amount" class="moneyInput" inputmode="decimal" placeholder="例：20000">
+      <!-- 売価も必須扱いで softInput -->
+      <input id="amount" class="moneyInput softInput" inputmode="decimal" placeholder="例：20000">
     </div>
 
     <div class="small" id="fxHint"></div>
@@ -263,7 +277,7 @@
 
   <div class="card">
     <div class="cardHeader">
-      <div class="foldLeft">
+      <div class="headerLeft">
         <button class="foldBtn" id="toggleProfit">▼</button>
         <div class="kbold">② 利益・コスト設定</div>
       </div>
@@ -308,13 +322,15 @@
 
   <div class="card">
     <div class="cardHeader">
-      <div class="foldLeft">
+      <div class="headerLeft">
         <button class="foldBtn" id="toggleFx">▼</button>
         <div class="kbold">③ 為替レート（手動入力）</div>
       </div>
-      <a class="linkBtn" href="https://www.bk.mufg.jp/ippan/rate/real.html" target="_blank" rel="noopener">
-        為替レートを見る（MUFG）
-      </a>
+      <div class="headerRight">
+        <a class="linkBtn" href="https://www.bk.mufg.jp/ippan/rate/real.html" target="_blank" rel="noopener">
+          為替レートを見る（MUFG）
+        </a>
+      </div>
     </div>
 
     <div class="foldBody" id="bodyFx">
@@ -334,7 +350,7 @@
 
   <div class="card">
     <div class="cardHeader">
-      <div class="foldLeft">
+      <div class="headerLeft">
         <button class="foldBtn" id="toggleResult">▼</button>
         <div class="kbold">計算結果</div>
       </div>
@@ -369,24 +385,22 @@
 
 <script>
 (() => {
-  // v15: 欠落していた setActive / focusTo を含めて、通貨自動選択＆自動計算を確実に復旧
   const SK = {
-    market: "blc_market_v15",
-    active: "blc_active_v15",
-    amount: "blc_amount_v15",
-    profit: "blc_profit_v15",
-    ship: "blc_ship_v15",
-    usdJpy: "blc_usdJpy_v15",
-    eurJpy: "blc_eurJpy_v15",
-    tax: "blc_tax_v15",
-    purchase: "blc_purchase_v15",
-    feeAdjust: "blc_feeAdjust_v15",
-    cProfit: "blc_collapse_profit_v15",
-    cFx: "blc_collapse_fx_v15",
-    cRes: "blc_collapse_res_v15",
+    market: "blc_market_v16",
+    active: "blc_active_v16",
+    amount: "blc_amount_v16",
+    profit: "blc_profit_v16",
+    ship: "blc_ship_v16",
+    usdJpy: "blc_usdJpy_v16",
+    eurJpy: "blc_eurJpy_v16",
+    tax: "blc_tax_v16",
+    purchase: "blc_purchase_v16",
+    feeAdjust: "blc_feeAdjust_v16",
+    cProfit: "blc_collapse_profit_v16",
+    cFx: "blc_collapse_fx_v16",
+    cRes: "blc_collapse_res_v16",
   };
 
-  // ---- elems
   const marketEl = document.getElementById("market");
   const chips = [...document.querySelectorAll(".chip")];
   const amountPrefix = document.getElementById("amountPrefix");
@@ -432,7 +446,6 @@
   const copyAllBtn = document.getElementById("copyAllBtn");
   const copyAllMsg = document.getElementById("copyAllMsg");
 
-  // ---- helpers
   const parseNum = (v) => {
     const s = String(v ?? "").replace(/[¥$€,\s]/g,"").replace(/[^\d.-]/g,"");
     return s ? Number(s) : NaN;
@@ -476,7 +489,7 @@
     localStorage.setItem(SK.active, cur);
     chips.forEach(c => c.classList.toggle("active", c.dataset.cur === cur));
     amountPrefix.textContent = sym(cur);
-    calc();
+    calc({allowAutoFocus:false}); // 通貨変更時に変な移動を防ぐ
     if (focusAmount) focusTo(amountEl);
   };
 
@@ -519,12 +532,37 @@
     rDate.textContent = "—";
   };
 
-  const calc = () => {
+  // ---- 自動フォーカス制御（必須：売価→利益→USD→EUR）
+  // ルール：ターゲットが「未入力（softInput で filled じゃない）」の時だけ飛ぶ
+  const isUnfilledSoft = (el) => el && el.classList.contains("softInput") && !el.classList.contains("filled");
+
+  const autoFocusAfter = (sourceEl) => {
+    // 必須順
+    const seq = [amountEl, profitEl, usdEl, eurEl];
+
+    const idx = seq.indexOf(sourceEl);
+    if (idx < 0) return;
+
+    // 次の「未入力必須」へ
+    for (let i = idx + 1; i < seq.length; i++){
+      const target = seq[i];
+      if (isUnfilledSoft(target)) {
+        focusTo(target);
+        break;
+      }
+    }
+  };
+
+  const calc = ({allowAutoFocus=true}={}) => {
     errMsg.textContent = "";
     copyAllMsg.textContent = "";
     copyMsgTop.textContent = "";
 
-    setSoft(usdEl); setSoft(eurEl); setSoft(profitEl);
+    // 必須の filled 更新（売価/利益/USD/EUR）
+    setSoft(amountEl);
+    setSoft(profitEl);
+    setSoft(usdEl);
+    setSoft(eurEl);
 
     const m = marketEl.value;
     const amt = parseNum(amountEl.value);
@@ -667,6 +705,8 @@
     copyLines.push(`日付　${nowDate()}`);
 
     bidTop.dataset.copyText = copyLines.join("\n");
+
+    // 自動フォーカスはイベント側で制御（ここでは触らない）
   };
 
   // ---- folds
@@ -689,21 +729,35 @@
   bindToggle(tFx, bFx, SK.cFx);
   bindToggle(tRes, bRes, SK.cRes);
 
-  // ---- events (重要：ここが動けば自動計算も通貨切替も動く)
+  // ---- events
   chips.forEach(btn => btn.addEventListener("click", () => setActive(btn.dataset.cur, {focusAmount:true})));
 
   marketEl.addEventListener("change", () => {
     const cur = autoCurrencyByMarket(marketEl.value);
-    setActive(cur, {focusAmount:true}); // catawikiならEURが自動選択される
+    setActive(cur, {focusAmount:true});
   });
 
-  amountEl.addEventListener("input", calc);
-  [profitEl, shipEl, taxEl, purchaseEl, feeAdjustEl, usdEl, eurEl].forEach(el => el.addEventListener("input", calc));
+  // 重要：入力イベントで「未入力必須だけ」自動フォーカス
+  const onInputWithAuto = (el) => {
+    calc({allowAutoFocus:true});
+    // 必須でまだ未入力が残る場合のみ次へ
+    autoFocusAfter(el);
+  };
+
+  amountEl.addEventListener("input", () => onInputWithAuto(amountEl));
+  profitEl.addEventListener("input", () => onInputWithAuto(profitEl));
+  usdEl.addEventListener("input", () => onInputWithAuto(usdEl));
+  eurEl.addEventListener("input", () => onInputWithAuto(eurEl));
+
+  // 他の入力は計算のみ（自動フォーカスなし）
+  [shipEl, taxEl, purchaseEl, feeAdjustEl].forEach(el => el.addEventListener("input", () => calc({allowAutoFocus:true})));
 
   clearAmountEl.addEventListener("click", () => {
     amountEl.value = "";
     localStorage.setItem(SK.amount, "");
-    calc();
+    // 売価クリアしたら必須に戻る
+    setSoft(amountEl);
+    calc({allowAutoFocus:false});
     focusTo(amountEl);
   });
 
@@ -735,7 +789,7 @@
     }
   });
 
-  // ---- init restore
+  // ---- restore
   const restore = () => {
     const m = localStorage.getItem(SK.market);
     if (m) marketEl.value = m;
@@ -771,12 +825,16 @@
     amountPrefix.textContent = sym(active);
 
     applyCollapse();
-    setSoft(usdEl); setSoft(eurEl); setSoft(profitEl);
+
+    // 必須のfilled反映（売価/利益/USD/EUR）
+    setSoft(amountEl);
+    setSoft(profitEl);
+    setSoft(usdEl);
+    setSoft(eurEl);
   };
 
-  // ---- boot
   restore();
-  calc();
+  calc({allowAutoFocus:false});
 })();
 </script>
 </body>
