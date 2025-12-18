@@ -369,22 +369,24 @@
 
 <script>
 (() => {
+  // v15: 欠落していた setActive / focusTo を含めて、通貨自動選択＆自動計算を確実に復旧
   const SK = {
-    market: "blc_market_v14",
-    active: "blc_active_v14",
-    amount: "blc_amount_v14",
-    profit: "blc_profit_v14",
-    ship: "blc_ship_v14",
-    usdJpy: "blc_usdJpy_v14",
-    eurJpy: "blc_eurJpy_v14",
-    tax: "blc_tax_v14",
-    purchase: "blc_purchase_v14",
-    feeAdjust: "blc_feeAdjust_v14",
-    cProfit: "blc_collapse_profit_v14",
-    cFx: "blc_collapse_fx_v14",
-    cRes: "blc_collapse_res_v14",
+    market: "blc_market_v15",
+    active: "blc_active_v15",
+    amount: "blc_amount_v15",
+    profit: "blc_profit_v15",
+    ship: "blc_ship_v15",
+    usdJpy: "blc_usdJpy_v15",
+    eurJpy: "blc_eurJpy_v15",
+    tax: "blc_tax_v15",
+    purchase: "blc_purchase_v15",
+    feeAdjust: "blc_feeAdjust_v15",
+    cProfit: "blc_collapse_profit_v15",
+    cFx: "blc_collapse_fx_v15",
+    cRes: "blc_collapse_res_v15",
   };
 
+  // ---- elems
   const marketEl = document.getElementById("market");
   const chips = [...document.querySelectorAll(".chip")];
   const amountPrefix = document.getElementById("amountPrefix");
@@ -430,6 +432,7 @@
   const copyAllBtn = document.getElementById("copyAllBtn");
   const copyAllMsg = document.getElementById("copyAllMsg");
 
+  // ---- helpers
   const parseNum = (v) => {
     const s = String(v ?? "").replace(/[¥$€,\s]/g,"").replace(/[^\d.-]/g,"");
     return s ? Number(s) : NaN;
@@ -466,21 +469,7 @@
 
   let active = "JPY";
 
-  const applyCollapse = () => {
-    const cp = localStorage.getItem(SK.cProfit) === "1";
-    const cf = localStorage.getItem(SK.cFx) === "1";
-    const cr = localStorage.getItem(SK.cRes) === "1";
-    bProfit.classList.toggle("hidden", cp); tProfit.textContent = cp ? "▶" : "▼";
-    bFx.classList.toggle("hidden", cf); tFx.textContent = cf ? "▶" : "▼";
-    bRes.classList.toggle("hidden", cr); tRes.textContent = cr ? "▶" : "▼";
-  };
-  const bindToggle = (btn, body, key) => {
-    btn.addEventListener("click", () => {
-      const hidden = body.classList.toggle("hidden");
-      btn.textContent = hidden ? "▶" : "▼";
-      localStorage.setItem(key, hidden ? "1" : "0");
-    });
-  };
+  const autoCurrencyByMarket = (m) => (m === "catawiki") ? "EUR" : "JPY";
 
   const setActive = (cur, {focusAmount=false}={}) => {
     active = cur;
@@ -490,8 +479,6 @@
     calc();
     if (focusAmount) focusTo(amountEl);
   };
-
-  const autoCurrencyByMarket = (m) => (m === "catawiki") ? "EUR" : "JPY";
 
   const updateFxHint = (amount, cur, usdJpy, eurJpy) => {
     if (!isFinite(amount) || amount <= 0) { fxHintEl.textContent = ""; return; }
@@ -550,8 +537,9 @@
     const taxOn = !!taxEl.checked;
 
     const purchase = parseNum(purchaseEl.value);
-    const feeAdjPct = parseNum(feeAdjustEl.value); // 3 => +3%
+    const feeAdjPct = parseNum(feeAdjustEl.value);
 
+    // save
     localStorage.setItem(SK.market, m);
     localStorage.setItem(SK.amount, isFinite(amt) ? String(amt) : "");
     localStorage.setItem(SK.profit, isFinite(profitSetting) ? String(profitSetting) : (profitEl.value ?? ""));
@@ -566,8 +554,16 @@
 
     if (!isFinite(amt) || amt <= 0) { resetOut(); return; }
 
-    if (active === "USD" && (!isFinite(usdJpy) || usdJpy <= 0)) { resetOut(); rMarket.textContent = marketLabel(m); errMsg.textContent = "USDのレート（1 USD = JPY）を入力してください。"; return; }
-    if (active === "EUR" && (!isFinite(eurJpy) || eurJpy <= 0)) { resetOut(); rMarket.textContent = marketLabel(m); errMsg.textContent = "EURのレート（1 EUR = JPY）を入力してください。"; return; }
+    if (active === "USD" && (!isFinite(usdJpy) || usdJpy <= 0)) {
+      resetOut(); rMarket.textContent = marketLabel(m);
+      errMsg.textContent = "USDのレート（1 USD = JPY）を入力してください。";
+      return;
+    }
+    if (active === "EUR" && (!isFinite(eurJpy) || eurJpy <= 0)) {
+      resetOut(); rMarket.textContent = marketLabel(m);
+      errMsg.textContent = "EURのレート（1 EUR = JPY）を入力してください。";
+      return;
+    }
 
     let grossJpy = NaN;
     if (active === "JPY") grossJpy = amt;
@@ -587,7 +583,6 @@
 
     const priceLine = `${fmtCur(active, amt)} → ${fmtJPY(grossJpy)} ${rateText}`.trim();
 
-    // ★表示形式を変更： + 調整：3% の形
     const baseN = baseNote(m);
     const feeNote = (!isFinite(feeAdjPct) || feeAdjPct === 0)
       ? baseN
@@ -600,6 +595,7 @@
     rShip.textContent = fmtJPY(ship);
     rDate.textContent = nowDate();
 
+    // Bid Limit requires profitSetting
     if (isFinite(profitSetting) && profitSetting > 0) {
       bidProfitHint.textContent = `利益${Math.round(profitSetting).toLocaleString()}円`;
 
@@ -615,6 +611,7 @@
       errMsg.textContent = "利益（JPY）を入力してください（入札上限を表示するために必要です）。";
     }
 
+    // Result side: purchase overrides only result calc
     const hasPurchase = (isFinite(purchase) && purchase > 0);
 
     let costLabel = "仕入（入札上限）";
@@ -638,6 +635,7 @@
     const profitRate = (isFinite(profitVal) && grossJpy > 0) ? (profitVal / grossJpy) * 100 : NaN;
     rProfitRate.textContent = isFinite(profitRate) ? `${profitRate.toFixed(1)}%` : "—";
 
+    // refund (ebay/catawiki only)
     const isOverseas = (m === "ebay" || m === "catawiki");
     rRefundRow.style.display = "none";
     rRefund.textContent = "—";
@@ -671,16 +669,36 @@
     bidTop.dataset.copyText = copyLines.join("\n");
   };
 
-  // ---- events
+  // ---- folds
+  const applyCollapse = () => {
+    const cp = localStorage.getItem(SK.cProfit) === "1";
+    const cf = localStorage.getItem(SK.cFx) === "1";
+    const cr = localStorage.getItem(SK.cRes) === "1";
+    bProfit.classList.toggle("hidden", cp); tProfit.textContent = cp ? "▶" : "▼";
+    bFx.classList.toggle("hidden", cf); tFx.textContent = cf ? "▶" : "▼";
+    bRes.classList.toggle("hidden", cr); tRes.textContent = cr ? "▶" : "▼";
+  };
+  const bindToggle = (btn, body, key) => {
+    btn.addEventListener("click", () => {
+      const hidden = body.classList.toggle("hidden");
+      btn.textContent = hidden ? "▶" : "▼";
+      localStorage.setItem(key, hidden ? "1" : "0");
+    });
+  };
+  bindToggle(tProfit, bProfit, SK.cProfit);
+  bindToggle(tFx, bFx, SK.cFx);
+  bindToggle(tRes, bRes, SK.cRes);
+
+  // ---- events (重要：ここが動けば自動計算も通貨切替も動く)
   chips.forEach(btn => btn.addEventListener("click", () => setActive(btn.dataset.cur, {focusAmount:true})));
 
   marketEl.addEventListener("change", () => {
     const cur = autoCurrencyByMarket(marketEl.value);
-    setActive(cur, {focusAmount:true});
+    setActive(cur, {focusAmount:true}); // catawikiならEURが自動選択される
   });
 
-  amountEl.addEventListener("input", () => calc());
-  [profitEl, shipEl, taxEl, purchaseEl, feeAdjustEl, usdEl, eurEl].forEach(el => el.addEventListener("input", () => calc()));
+  amountEl.addEventListener("input", calc);
+  [profitEl, shipEl, taxEl, purchaseEl, feeAdjustEl, usdEl, eurEl].forEach(el => el.addEventListener("input", calc));
 
   clearAmountEl.addEventListener("click", () => {
     amountEl.value = "";
@@ -717,33 +735,13 @@
     }
   });
 
-  // folds
-  const applyCollapse = () => {
-    const cp = localStorage.getItem(SK.cProfit) === "1";
-    const cf = localStorage.getItem(SK.cFx) === "1";
-    const cr = localStorage.getItem(SK.cRes) === "1";
-    bProfit.classList.toggle("hidden", cp); tProfit.textContent = cp ? "▶" : "▼";
-    bFx.classList.toggle("hidden", cf); tFx.textContent = cf ? "▶" : "▼";
-    bRes.classList.toggle("hidden", cr); tRes.textContent = cr ? "▶" : "▼";
-  };
-  const bindToggle = (btn, body, key) => {
-    btn.addEventListener("click", () => {
-      const hidden = body.classList.toggle("hidden");
-      btn.textContent = hidden ? "▶" : "▼";
-      localStorage.setItem(key, hidden ? "1" : "0");
-    });
-  };
-  bindToggle(tProfit, bProfit, SK.cProfit);
-  bindToggle(tFx, bFx, SK.cFx);
-  bindToggle(tRes, bRes, SK.cRes);
-
-  // init restore
+  // ---- init restore
   const restore = () => {
     const m = localStorage.getItem(SK.market);
     if (m) marketEl.value = m;
 
-    const cur = localStorage.getItem(SK.active);
-    active = cur || autoCurrencyByMarket(marketEl.value);
+    const curSaved = localStorage.getItem(SK.active);
+    active = curSaved || autoCurrencyByMarket(marketEl.value);
 
     const a = localStorage.getItem(SK.amount);
     if (a) amountEl.value = a;
@@ -776,6 +774,7 @@
     setSoft(usdEl); setSoft(eurEl); setSoft(profitEl);
   };
 
+  // ---- boot
   restore();
   calc();
 })();
