@@ -34,6 +34,21 @@
     .row3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
     @media(max-width:720px){ .row3{ grid-template-columns:1fr; } }
     @media(max-width:640px){ .row2{ grid-template-columns:1fr; } }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.82);
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: .9rem;
+      max-width: 92vw;
+      display: none;
+      z-index: 9999;
+    }
   </style>
 </head>
 <body>
@@ -129,6 +144,8 @@
   </div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
   function ymd(d=new Date()){
     const yyyy=d.getFullYear();
@@ -147,17 +164,12 @@
   function conditionIdFromSelect(v){ return v==="NEW" ? "1000" : "3000"; }
   function conditionTextFromSelect(v){ return v==="NEW" ? "New" : "Used"; }
 
-  function isMobile(){
-    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-  }
-
-  // スマホでeBayがアプリ起動して条件が崩れる対策：Googleリダイレクト経由でブラウザ表示を狙う
-  function openPreferBrowser(url){
-    const finalUrl = isMobile()
-      ? `https://www.google.com/url?q=${encodeURIComponent(url)}`
-      : url;
-
-    window.open(finalUrl, "_blank", "noopener,noreferrer");
+  function toast(msg){
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.style.display = "block";
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(()=>{ el.style.display="none"; }, 2200);
   }
 
   function getFx(){
@@ -235,6 +247,20 @@
     return `https://www.ebay.com/sch/i.html?${params.toString()}`;
   }
 
+  // ✅ スマホ対策：まずURLをコピー → その後に直URLを新規タブで開く
+  // （アプリに吸い込まれてもURLは手元に残るので、ブラウザに貼って開ける）
+  async function openEbayUrlSmart(url){
+    // できる限りコピー（失敗してもOK）
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("URLをコピーしました");
+    } catch (e) {
+      // iOSなどで権限的に失敗することがあるので無視
+    }
+    // 直URLを開く（リダイレクト警告回避）
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   function openProductResearch(){
     const keyword = document.getElementById("keyword").value.trim();
     const condSel = document.getElementById("condition").value;
@@ -253,7 +279,7 @@
 
     const url = buildProductResearchUrl({ keyword, minUsd, maxUsd, dayRange, conditionId });
     window.__lastProductUrl = url;
-    openPreferBrowser(url);
+    openEbayUrlSmart(url);
   }
 
   function openAdvancedResearch(){
@@ -273,7 +299,7 @@
 
     const url = buildAdvancedResearchUrl({ keyword, minJpy, maxJpy, conditionId });
     window.__lastAdvancedUrl = url;
-    openPreferBrowser(url);
+    openEbayUrlSmart(url);
   }
 
   function calculate(){
