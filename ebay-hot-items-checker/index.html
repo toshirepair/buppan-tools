@@ -20,10 +20,9 @@
       margin-top:14px; padding:10px; width:100%;
       font-size:1rem; border-radius:8px; border:none; cursor:pointer;
     }
-    .btn-primary{ background:#0073e6; color:#fff; }
     .btn-secondary{ background:#eee; }
     .btn-copy{ background:#444; color:#fff; }
-    .small{ font-size:.9rem; color:#555; margin-top:8px; }
+    .small{ font-size:.95rem; color:#555; margin-top:10px; }
     .result{ font-size:1.05rem; margin-top:10px; }
 
     .hot{ color:#d32f2f; font-weight:900; }
@@ -35,20 +34,31 @@
     @media(max-width:720px){ .row3{ grid-template-columns:1fr; } }
     @media(max-width:640px){ .row2{ grid-template-columns:1fr; } }
 
-    .toast{
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.82);
-      color: #fff;
-      padding: 10px 12px;
-      border-radius: 10px;
-      font-size: .9rem;
-      max-width: 92vw;
-      display: none;
-      z-index: 9999;
+    a.linkish{
+      color:#1a73e8;
+      text-decoration: underline;
+      font-weight: 700;
     }
+    .linksWrap{
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .linkRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .pill{
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      background:#f1f3f4;
+      color:#444;
+      font-size:.85rem;
+    }
+    .muted{ color:#666; font-size:.9rem; }
   </style>
 </head>
 <body>
@@ -106,9 +116,17 @@
     </div>
   </div>
 
-  <div class="row2">
-    <button class="btn-primary" onclick="openProductResearch()">eBay Product Research（Sold）を開く</button>
-    <button class="btn-secondary" onclick="openAdvancedResearch()">Advanced Research（Sold）を開く</button>
+  <div class="linksWrap">
+    <div class="linkRow">
+      <span class="pill">SOLD</span>
+      <a id="prLink" class="linkish" href="#" onclick="return false;">Product Research（Sold）で見る</a>
+      <span class="muted" id="prHint"></span>
+    </div>
+    <div class="linkRow">
+      <span class="pill">SOLD</span>
+      <a id="arLink" class="linkish" href="#" onclick="return false;">Advanced Research（Sold）で見る</a>
+      <span class="muted" id="arHint"></span>
+    </div>
   </div>
 
   <div class="small">
@@ -144,8 +162,6 @@
   </div>
 </div>
 
-<div id="toast" class="toast"></div>
-
 <script>
   function ymd(d=new Date()){
     const yyyy=d.getFullYear();
@@ -163,14 +179,6 @@
   }
   function conditionIdFromSelect(v){ return v==="NEW" ? "1000" : "3000"; }
   function conditionTextFromSelect(v){ return v==="NEW" ? "New" : "Used"; }
-
-  function toast(msg){
-    const el = document.getElementById("toast");
-    el.textContent = msg;
-    el.style.display = "block";
-    clearTimeout(window.__toastTimer);
-    window.__toastTimer = setTimeout(()=>{ el.style.display="none"; }, 2200);
-  }
 
   function getFx(){
     const fx = Number(document.getElementById("fx").value);
@@ -200,7 +208,7 @@
     return {min, max};
   }
 
-  // Product Research：ユーザー提示URLに合わせて sorting=-avgsalesprice（高い順）
+  // Product Research：sorting=-avgsalesprice（高い順）
   function buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId}){
     const endDate = Date.now();
     const startDate = endDate - (Number(dayRange) * 24 * 60 * 60 * 1000);
@@ -228,7 +236,7 @@
     return `https://www.ebay.com/sh/research?${params.toString()}`;
   }
 
-  // Advanced Research：ユーザー提示URLに合わせて _sop=16（高い順）
+  // Advanced Research：_sop=16（高い順）
   function buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId}){
     const params = new URLSearchParams({
       _nkw: keyword,
@@ -247,59 +255,59 @@
     return `https://www.ebay.com/sch/i.html?${params.toString()}`;
   }
 
-  // ✅ スマホ対策：まずURLをコピー → その後に直URLを新規タブで開く
-  // （アプリに吸い込まれてもURLは手元に残るので、ブラウザに貼って開ける）
-  async function openEbayUrlSmart(url){
-    // できる限りコピー（失敗してもOK）
-    try {
-      await navigator.clipboard.writeText(url);
-      toast("URLをコピーしました");
-    } catch (e) {
-      // iOSなどで権限的に失敗することがあるので無視
-    }
-    // 直URLを開く（リダイレクト警告回避）
-    window.open(url, "_blank", "noopener,noreferrer");
+  function setLink(el, url){
+    el.href = url;
+    // スマホでの挙動安定を優先：同一タブで開く（targetを付けない）
+    el.onclick = () => true; // 通常遷移
   }
 
-  function openProductResearch(){
+  function updateLinks(){
     const keyword = document.getElementById("keyword").value.trim();
     const condSel = document.getElementById("condition").value;
     const conditionId = conditionIdFromSelect(condSel);
     const dayRange = Number(document.getElementById("dayRange").value);
     const rangePct = Number(document.getElementById("range").value);
 
-    if(!keyword){ alert("キーワードを入力してください"); return; }
+    const prLink = document.getElementById("prLink");
+    const arLink = document.getElementById("arLink");
+    const prHint = document.getElementById("prHint");
+    const arHint = document.getElementById("arHint");
 
-    const prices = resolveCenterPrices();
-    let minUsd = null, maxUsd = null;
-    if (prices) {
-      const mm = calcMinMax(prices.usdCenter, rangePct);
-      minUsd = mm.min; maxUsd = mm.max;
+    if(!keyword){
+      prLink.href="#"; arLink.href="#";
+      prLink.onclick = (e)=>{ e.preventDefault(); alert("キーワードを入力してください"); };
+      arLink.onclick = (e)=>{ e.preventDefault(); alert("キーワードを入力してください"); };
+      prHint.textContent="（キーワードを入力）";
+      arHint.textContent="（キーワードを入力）";
+      return;
     }
 
-    const url = buildProductResearchUrl({ keyword, minUsd, maxUsd, dayRange, conditionId });
-    window.__lastProductUrl = url;
-    openEbayUrlSmart(url);
-  }
-
-  function openAdvancedResearch(){
-    const keyword = document.getElementById("keyword").value.trim();
-    const condSel = document.getElementById("condition").value;
-    const conditionId = conditionIdFromSelect(condSel);
-    const rangePct = Number(document.getElementById("range").value);
-
-    if(!keyword){ alert("キーワードを入力してください"); return; }
-
+    // 中心値が未入力でもリンク生成はOK（価格レンジは付けない）
     const prices = resolveCenterPrices();
-    let minJpy = null, maxJpy = null;
-    if (prices) {
-      const mm = calcMinMax(prices.jpyCenter, rangePct);
-      minJpy = mm.min; maxJpy = mm.max;
+    let minUsd=null, maxUsd=null, minJpy=null, maxJpy=null;
+
+    if(prices){
+      const mmUsd = calcMinMax(prices.usdCenter, rangePct);
+      minUsd=mmUsd.min; maxUsd=mmUsd.max;
+
+      const mmJpy = calcMinMax(prices.jpyCenter, rangePct);
+      minJpy=mmJpy.min; maxJpy=mmJpy.max;
+
+      prHint.textContent = `（${fmtMoneyUsd(minUsd)} - ${fmtMoneyUsd(maxUsd)} / ${dayRange}日 / ${conditionTextFromSelect(condSel)}）`;
+      arHint.textContent = `（${fmtMoneyJpy(minJpy)} - ${fmtMoneyJpy(maxJpy)} / ${conditionTextFromSelect(condSel)}）`;
+    } else {
+      prHint.textContent = `（${dayRange}日 / ${conditionTextFromSelect(condSel)}）`;
+      arHint.textContent = `（${conditionTextFromSelect(condSel)}）`;
     }
 
-    const url = buildAdvancedResearchUrl({ keyword, minJpy, maxJpy, conditionId });
-    window.__lastAdvancedUrl = url;
-    openEbayUrlSmart(url);
+    const prUrl = buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId});
+    const arUrl = buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId});
+
+    window.__lastProductUrl = prUrl;
+    window.__lastAdvancedUrl = arUrl;
+
+    setLink(prLink, prUrl);
+    setLink(arLink, arUrl);
   }
 
   function calculate(){
@@ -433,6 +441,17 @@
       document.getElementById("copyMsg").textContent="直接コピーできないため選択状態にしました（Ctrl+Cでコピーしてください）";
     }
   }
+
+  // 入力変更でリンクを即更新
+  ["keyword","condition","dayRange","priceUsd","priceJpy","fx","range"].forEach(id=>{
+    document.addEventListener("DOMContentLoaded", ()=>{});
+    const el = document.getElementById(id);
+    el.addEventListener("input", updateLinks);
+    el.addEventListener("change", updateLinks);
+  });
+
+  // 初期表示
+  updateLinks();
 </script>
 
 </body>
