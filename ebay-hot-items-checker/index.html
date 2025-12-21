@@ -44,7 +44,7 @@
 
 <div class="card">
   <label>① 型番 / キーワード</label>
-  <input id="keyword" type="text" placeholder="例：D750 / Tamron 70-180mm f/2.8 Sony E Di III VXD">
+  <input id="keyword" type="text" placeholder="例：Nikon 50mm F/1.4 Ai-s">
 
   <div class="row2">
     <div>
@@ -67,19 +67,19 @@
 
   <div class="row2">
     <div>
-      <label>売れ筋の価格（中心値 / USD）</label>
-      <input id="priceUsd" type="number" inputmode="decimal" placeholder="例：750（未入力OK）">
+      <label>USD：売れ筋の価格（中心値）</label>
+      <input id="priceUsd" type="number" inputmode="decimal" placeholder="例：100（未入力OK）">
     </div>
     <div>
-      <label>売れ筋の価格（中心値 / JPY）</label>
-      <input id="priceJpy" type="number" inputmode="numeric" placeholder="例：80000（未入力OK）">
+      <label>JPY：売れ筋の価格（中心値）</label>
+      <input id="priceJpy" type="number" inputmode="numeric" placeholder="例：15000（未入力OK）">
     </div>
   </div>
 
   <div class="row2">
     <div>
-      <label>為替レート（1 USD = ? JPY）</label>
-      <input id="fx" type="number" inputmode="decimal" placeholder="例：150（JPY入力や円⇄ドル変換に使用）" value="150">
+      <label>為替レート（1 USD = JPY）</label>
+      <input id="fx" type="number" inputmode="decimal" placeholder="例：150" value="150">
     </div>
     <div>
       <label>③ 売れ筋の価格レンジ（±%）</label>
@@ -101,7 +101,8 @@
 
   <div class="small">
     ※ Product Research：価格はUSDで検索（JPY入力の場合は為替でUSDへ変換して検索）<br>
-    ※ Advanced Research：価格はJPYで検索（USD入力の場合は為替でJPYへ変換して検索）/ 期間は固定でOK
+    ※ Advanced Research：価格はJPYで検索（USD入力の場合は為替でJPYへ変換して検索）/ 期間は固定でOK<br>
+    ※ 両方とも「価格高い順」で表示します
   </div>
 </div>
 
@@ -156,7 +157,6 @@
     return (isFinite(fx) && fx > 0) ? fx : 150;
   }
 
-  // 中心値を「USD / JPY」どちらからでも確定させる（どちらか片方は必須）
   function resolveCenterPrices(){
     const fx = getFx();
     const usdRaw = document.getElementById("priceUsd").value;
@@ -181,6 +181,7 @@
   }
 
   // Product Research（USDで検索）
+  // sorting：価格高い順に寄せたいので、-salesprice を採用（平均価格より“価格そのもの”優先）
   function buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId}){
     const endDate = Date.now();
     const startDate = endDate - (Number(dayRange) * 24 * 60 * 60 * 1000);
@@ -196,7 +197,7 @@
       maxPrice: String(maxUsd),
       offset:"0",
       limit:"50",
-      sorting:"-avgsalesprice",
+      sorting:"-salesprice",
       tabName:"SOLD",
       tz:"Asia/Tokyo"
     });
@@ -204,13 +205,13 @@
     return `https://www.ebay.com/sh/research?${params.toString()}`;
   }
 
-  // Advanced Research（JPYで検索）※指定の例URL構造に合わせる
+  // Advanced Research（JPYで検索）※価格高い順＝_sop=3
   function buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId}){
     const params = new URLSearchParams({
       _nkw: keyword,
       _sacat: "0",
       _from: "R40",
-      _sop: "16",              // 例に合わせて
+      _sop: "3", // 価格高い順
       LH_ItemCondition: String(conditionId || "3000"),
       LH_Sold: "1",
       rt: "nc",
@@ -230,16 +231,12 @@
     if(!keyword){ alert("① キーワードを入力してください"); return; }
 
     const prices = resolveCenterPrices();
-    if(!prices){ alert("売れ筋の価格（中心値）を USD か JPY のどちらかで入力してください"); return; }
+    if(!prices){ alert("USD か JPY のどちらかで中心値を入力してください"); return; }
 
     const {min:minUsd, max:maxUsd} = calcMinMax(prices.usdCenter, rangePct);
 
     const url = buildProductResearchUrl({
-      keyword,
-      minUsd,
-      maxUsd,
-      dayRange,
-      conditionId
+      keyword, minUsd, maxUsd, dayRange, conditionId
     });
 
     window.__lastProductUrl = url;
@@ -263,16 +260,12 @@
     if(!keyword){ alert("① キーワードを入力してください"); return; }
 
     const prices = resolveCenterPrices();
-    if(!prices){ alert("売れ筋の価格（中心値）を USD か JPY のどちらかで入力してください"); return; }
+    if(!prices){ alert("USD か JPY のどちらかで中心値を入力してください"); return; }
 
-    // AdvancedはJPYで検索（USD入力ならJPYに変換）
     const {min:minJpy, max:maxJpy} = calcMinMax(prices.jpyCenter, rangePct);
 
     const url = buildAdvancedResearchUrl({
-      keyword,
-      minJpy,
-      maxJpy,
-      conditionId
+      keyword, minJpy, maxJpy, conditionId
     });
 
     window.__lastAdvancedUrl = url;
@@ -300,36 +293,25 @@
 
     if(!keyword){ alert("① キーワードを入力してください"); return; }
     const prices = resolveCenterPrices();
-    if(!prices){ alert("売れ筋の価格（中心値）を USD か JPY のどちらかで入力してください"); return; }
+    if(!prices){ alert("USD か JPY のどちらかで中心値を入力してください"); return; }
     if(soldRaw==="" || activeRaw===""){ alert("⑤ Sold数 と ⑥ Active listings を入力してください"); return; }
 
     const sold = Number(soldRaw);
     const active = Number(activeRaw);
 
-    // 価格レンジ（Product=USD、Advanced=JPY）
     const mmUsd = calcMinMax(prices.usdCenter, rangePct);
     const mmJpy = calcMinMax(prices.jpyCenter, rangePct);
 
-    // URL（表示しない、コピー文にだけ）
     const productUrl = window.__lastProductUrl || buildProductResearchUrl({
-      keyword,
-      minUsd: mmUsd.min,
-      maxUsd: mmUsd.max,
-      dayRange,
-      conditionId
+      keyword, minUsd:mmUsd.min, maxUsd:mmUsd.max, dayRange, conditionId
     });
 
     const advancedUrl = window.__lastAdvancedUrl || buildAdvancedResearchUrl({
-      keyword,
-      minJpy: mmJpy.min,
-      maxJpy: mmJpy.max,
-      conditionId
+      keyword, minJpy:mmJpy.min, maxJpy:mmJpy.max, conditionId
     });
 
-    // 月間Sold数（Product Researchの期間から計算）
     const monthlySold = (dayRange>0) ? (sold / (dayRange/30)) : 0;
 
-    // 広告あり出品数（未入力なら null）
     let activeAds = null;
     if(promotedRaw!==""){
       const p = Number(promotedRaw);
@@ -339,7 +321,6 @@
     }
 
     const effectiveActive = (activeAds==null) ? active : activeAds;
-
     const rotationRate = (effectiveActive>0) ? (monthlySold/effectiveActive*100) : 0;
     const inventoryMonths = (monthlySold>0) ? (effectiveActive/monthlySold) : Infinity;
 
@@ -365,7 +346,6 @@
     html += `<div class="result"><span style="font-weight:900;">判定結果：</span><span class="${cls}" style="font-weight:900;">${judge}</span></div>`;
     document.getElementById("output").innerHTML = html;
 
-    // コピー文（空行なし、日付は最後、URLは2本）
     const today = ymd(new Date());
     const fx = prices.fx;
 
