@@ -52,14 +52,6 @@
     .warm { color: #f57c00; font-weight: 900; }
     .cold { color: #1976d2; font-weight: 900; }
 
-    .kv {
-      background: #fafafa;
-      border: 1px solid #e6e6e6;
-      border-radius: 8px;
-      padding: 10px;
-      margin-top: 10px;
-      word-break: break-word;
-    }
     .row2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -90,20 +82,27 @@
 
   <div class="row2">
     <div>
-      <label>② 売れ筋の価格（中心値 / USD）</label>
-      <input id="price" type="number" inputmode="decimal" placeholder="例：750">
-    </div>
-    <div>
-      <label>③ 売れ筋の価格レンジ（±%）</label>
-      <select id="range">
-        <option value="5">±5%</option>
-        <option value="10" selected>±10%</option>
-        <option value="15">±15%</option>
-        <option value="20">±20%</option>
-        <option value="25">±25%</option>
+      <label>② 状態</label>
+      <select id="condition">
+        <option value="USED" selected>Used</option>
+        <option value="NEW">New</option>
       </select>
     </div>
+    <div>
+      <label>売れ筋の価格（中心値 / USD）</label>
+      <input id="price" type="number" inputmode="decimal" placeholder="例：750">
+    </div>
   </div>
+
+  <label>③ 売れ筋の価格レンジ（±%）</label>
+  <select id="range">
+    <option value="2">±2%</option>
+    <option value="5">±5%</option>
+    <option value="10" selected>±10%</option>
+    <option value="15">±15%</option>
+    <option value="20">±20%</option>
+    <option value="25">±25%</option>
+  </select>
 
   <label>④ リサーチ期間</label>
   <select id="dayRange">
@@ -141,7 +140,7 @@
 
   <div id="copyArea" style="display:none;">
     <label style="margin-top:14px;">判定結果（コピー用）</label>
-    <textarea id="resultText" rows="14" readonly></textarea>
+    <textarea id="resultText" rows="15" readonly></textarea>
     <button class="btn-copy" onclick="copyResult()">判定結果をコピー</button>
     <div id="copyMsg" class="small"></div>
   </div>
@@ -171,7 +170,13 @@
     return (Math.abs(r - Math.round(r)) < 1e-9) ? String(Math.round(r)) : String(r);
   }
 
-  function buildProductResearchUrl({keyword, minPrice, maxPrice, dayRange}) {
+  function conditionIdFromSelect(v) {
+    // eBay conditionId (一般的な共通ID)
+    // New: 1000, Used: 3000
+    return v === "NEW" ? "1000" : "3000";
+  }
+
+  function buildProductResearchUrl({keyword, minPrice, maxPrice, dayRange, conditionId}) {
     const endDate = Date.now(); // ms
     const startDate = endDate - (Number(dayRange) * 24 * 60 * 60 * 1000);
 
@@ -191,6 +196,10 @@
       tz: "Asia/Tokyo"
     });
 
+    // 状態フィルタ（Product Researchに渡す）
+    // ※ eBay側仕様変更の可能性はあるが、URLに含めても無害で、現状のUI挙動に沿う
+    if (conditionId) params.set("conditionId", conditionId);
+
     return `https://www.ebay.com/sh/research?${params.toString()}`;
   }
 
@@ -199,19 +208,23 @@
     const price = Number(document.getElementById("price").value);
     const range = Number(document.getElementById("range").value);
     const dayRange = Number(document.getElementById("dayRange").value);
+    const conditionSel = document.getElementById("condition").value;
+    const conditionId = conditionIdFromSelect(conditionSel);
 
     if (!keyword) { alert("① キーワードを入力してください"); return; }
-    if (!price || price <= 0) { alert("② 価格（中心値）を入力してください"); return; }
+    if (!price || price <= 0) { alert("売れ筋の価格（中心値）を入力してください"); return; }
 
     const minPrice = Math.max(0, Math.floor(price * (1 - range / 100)));
     const maxPrice = Math.ceil(price * (1 + range / 100));
 
-    const url = buildProductResearchUrl({ keyword, minPrice, maxPrice, dayRange });
+    const url = buildProductResearchUrl({ keyword, minPrice, maxPrice, dayRange, conditionId });
 
     // 判定時に使うため保持
     window.__lastResearchUrl = url;
     window.__lastMinPrice = minPrice;
     window.__lastMaxPrice = maxPrice;
+    window.__lastConditionText = (conditionSel === "NEW") ? "New" : "Used";
+    window.__lastConditionId = conditionId;
 
     window.open(url, "_blank");
   }
@@ -221,14 +234,18 @@
     const price = Number(document.getElementById("price").value);
     const range = Number(document.getElementById("range").value);
     const dayRange = Number(document.getElementById("dayRange").value);
+    const conditionSel = document.getElementById("condition").value;
 
     const soldRaw = document.getElementById("sold").value;
     const activeRaw = document.getElementById("active").value;
     const promotedRaw = document.getElementById("promoted").value;
 
     if (!keyword) { alert("① キーワードを入力してください"); return; }
-    if (!price || price <= 0) { alert("② 価格（中心値）を入力してください"); return; }
+    if (!price || price <= 0) { alert("売れ筋の価格（中心値）を入力してください"); return; }
     if (soldRaw === "" || activeRaw === "") { alert("⑤ Sold数 と ⑥ Active listings を入力してください"); return; }
+
+    const conditionText = window.__lastConditionText || ((conditionSel === "NEW") ? "New" : "Used");
+    const conditionId = window.__lastConditionId || conditionIdFromSelect(conditionSel);
 
     const sold = Number(soldRaw);
     const active = Number(activeRaw);
@@ -245,7 +262,7 @@
     // URL（画面表示はしない、コピー文にのみ入れる）
     const researchUrl = window.__lastResearchUrl
       ? window.__lastResearchUrl
-      : buildProductResearchUrl({ keyword, minPrice, maxPrice, dayRange });
+      : buildProductResearchUrl({ keyword, minPrice, maxPrice, dayRange, conditionId });
 
     // 月間Sold数：30日=1か月換算
     const monthlySold = (dayRange > 0) ? (sold / (dayRange / 30)) : 0;
@@ -282,7 +299,7 @@
       cls = "cold";
     }
 
-    // 表示用（太字にしない。判定結果だけ太字）
+    // 表示用（判定結果だけ太字）
     const monthlySoldInt = fmtInt(monthlySold);
     const rotationInt = fmtInt(rotationRate);
     const inventoryTxt = fmtMonths(inventoryMonths);
@@ -303,11 +320,12 @@
 
     document.getElementById("output").innerHTML = html;
 
-    // コピー文（空行なし、指定の表現、日付は最後）
+    // コピー文（キーワードの下に状態を入れる）
     const today = ymd(new Date());
     const lines = [];
     lines.push("eBay Hot Items Checker");
     lines.push(`■キーワード：${keyword}`);
+    lines.push(`状態：${conditionText}`);
     lines.push(`売れ筋の価格（中心値）：${fmtMoney(price)}`);
     lines.push(`売れ筋の価格レンジ：±${range}%（${fmtMoney(minPrice)} - ${fmtMoney(maxPrice)}）`);
     lines.push(`期間：${dayRange}日`);
