@@ -90,11 +90,11 @@
 
   <div class="row2">
     <div>
-      <label>② 価格（中心値 / USD）</label>
+      <label>② 売れ筋の価格（中心値 / USD）</label>
       <input id="price" type="number" inputmode="decimal" placeholder="例：750">
     </div>
     <div>
-      <label>③ 価格レンジ（±%）</label>
+      <label>③ 売れ筋の価格レンジ（±%）</label>
       <select id="range">
         <option value="5">±5%</option>
         <option value="10" selected>±10%</option>
@@ -115,7 +115,7 @@
   <button class="btn-primary" onclick="openProductResearch()">eBay Product Research（Sold）を開く</button>
 
   <div class="small">
-    ※ Product Research画面を見て「⑤ Sold数」「⑥ Active listings」「⑦ 広告利用割合」を入力してください（URLはコピー文にのみ含めます）
+    ※ Product Research画面を見て「⑤ Sold数」「⑥ Active listings」「⑦ 広告利用率」を入力してください（URLはコピー文にのみ含めます）
   </div>
 </div>
 
@@ -130,9 +130,8 @@
       <input id="active" type="number" inputmode="numeric" placeholder="例：34">
     </div>
     <div>
-      <label>⑦ 広告利用割合（Promoted listings %）</label>
+      <label>⑦ 広告利用率（Promoted listings）</label>
       <input id="promoted" type="number" inputmode="numeric" placeholder="例：50（未入力OK）" min="0" max="100">
-      <div class="small">※ 例：50 → 出品数 × 0.5 を「広告あり出品数」として計算</div>
     </div>
   </div>
 
@@ -168,7 +167,6 @@
 
   function fmtMonths(n) {
     if (!isFinite(n)) return "∞";
-    // 見た目をスッキリ：2.0 なら 2、2.3 なら 2.3
     const r = Math.round(n * 10) / 10;
     return (Math.abs(r - Math.round(r)) < 1e-9) ? String(Math.round(r)) : String(r);
   }
@@ -244,7 +242,7 @@
       ? window.__lastMaxPrice
       : Math.ceil(price * (1 + range / 100));
 
-    // URL（表示はしないが、コピー文に入れる）
+    // URL（画面表示はしない、コピー文にのみ入れる）
     const researchUrl = window.__lastResearchUrl
       ? window.__lastResearchUrl
       : buildProductResearchUrl({ keyword, minPrice, maxPrice, dayRange });
@@ -252,20 +250,22 @@
     // 月間Sold数：30日=1か月換算
     const monthlySold = (dayRange > 0) ? (sold / (dayRange / 30)) : 0;
 
-    // 広告ありの「強いライバル数」
-    let promotedPct = null;
+    // 広告あり出品数（未入力なら null）
+    let activeAds = null;
     if (promotedRaw !== "") {
       const p = Number(promotedRaw);
-      if (isFinite(p) && p >= 0 && p <= 100) promotedPct = p;
+      if (isFinite(p) && p >= 0 && p <= 100) {
+        activeAds = active * (p / 100);
+      }
     }
 
-    const activeWithAds = (promotedPct == null) ? null : (active * (promotedPct / 100));
-    const effectiveActive = (activeWithAds == null) ? active : activeWithAds;
+    // 計算は「広告あり」があればそれを採用（強いライバル数）
+    const effectiveActive = (activeAds == null) ? active : activeAds;
 
-    // 回転率：月間Sold / 現在出品数（effective） * 100
+    // 回転率：月間Sold / 出品数(effective) * 100
     const rotationRate = (effectiveActive > 0) ? (monthlySold / effectiveActive * 100) : 0;
 
-    // 在庫期間（月）：現在出品数（effective） / 月間Sold
+    // 在庫期間（月）：出品数(effective) / 月間Sold
     const inventoryMonths = (monthlySold > 0) ? (effectiveActive / monthlySold) : Infinity;
 
     // 判定（在庫期間ベース）
@@ -282,55 +282,46 @@
       cls = "cold";
     }
 
-    // 画面表示（指定の表現）
+    // 表示用（太字にしない。判定結果だけ太字）
     const monthlySoldInt = fmtInt(monthlySold);
     const rotationInt = fmtInt(rotationRate);
     const inventoryTxt = fmtMonths(inventoryMonths);
 
-    const currentListingsLabel = (activeWithAds == null)
-      ? `現在出品数：${fmtInt(active)}個`
-      : `現在出品数：${fmtInt(active)}個（広告あり）`;
+    const lineSold = `指定期間Sold数：${fmtInt(sold)}（${dayRange}日）`;
+    const lineMonthly = `月間Sold数：${monthlySoldInt}個 / 月`;
+    const lineActiveNoAds = `現在出品数：${fmtInt(active)}個（広告なし）`;
+    const lineActiveAds = (activeAds == null)
+      ? null
+      : `現在出品数：${fmtInt(activeAds)}個（広告あり）`;
+    const lineRotation = `回転率：${rotationInt}% / 月`;
+    const lineInventory = `在庫期間：${inventoryTxt}ヵ月`;
 
-    const currentListingsEffectiveLine = (activeWithAds == null)
-      ? ""
-      : `<br>現在出品数（広告あり）：${fmtInt(activeWithAds)}個`;
+    let html = `<div class="result">${lineSold}<br>${lineMonthly}<br>${lineActiveNoAds}`;
+    if (lineActiveAds) html += `<br>${lineActiveAds}`;
+    html += `<br>${lineRotation}<br>${lineInventory}</div>`;
+    html += `<div class="result"><span style="font-weight:900;">判定結果：</span><span class="${cls}" style="font-weight:900;">${judge}</span></div>`;
 
-    document.getElementById("output").innerHTML = `
-      <div class="result">
-        <b>指定期間Sold数：</b>${fmtInt(sold)}（${dayRange}日）<br>
-        <b>月間Sold数：</b>${monthlySoldInt}個 / 月<br>
-        <b>${currentListingsLabel}</b>${currentListingsEffectiveLine}<br>
-        <b>回転率：</b>${rotationInt}% / 月<br>
-        <b>在庫期間：</b>${inventoryTxt}ヵ月
-      </div>
-      <div class="result ${cls}">
-        <b>判定結果：</b>${judge}
-      </div>
-    `;
+    document.getElementById("output").innerHTML = html;
 
-    // コピー文（指定フォーマット）
+    // コピー文（空行なし、指定の表現、日付は最後）
     const today = ymd(new Date());
-
     const lines = [];
     lines.push("eBay Hot Items Checker");
     lines.push(`■キーワード：${keyword}`);
-    lines.push(`価格（中心値）：${fmtMoney(price)}`);
-    lines.push(`価格レンジ：±${range}%（${fmtMoney(minPrice)} - ${fmtMoney(maxPrice)}）`);
+    lines.push(`売れ筋の価格（中心値）：${fmtMoney(price)}`);
+    lines.push(`売れ筋の価格レンジ：±${range}%（${fmtMoney(minPrice)} - ${fmtMoney(maxPrice)}）`);
     lines.push(`期間：${dayRange}日`);
     lines.push(`Sold：${fmtInt(sold)}個`);
     lines.push(`月換算 Sold：${monthlySoldInt}個 / 月`);
-    lines.push(`Active listings：${fmtInt(active)}個`);
-    if (activeWithAds != null) {
-      lines.push(`Active listings：${fmtInt(activeWithAds)}個（広告あり）`);
+    lines.push(`Active listings：${fmtInt(active)}個（広告なし）`);
+    if (activeAds != null) {
+      lines.push(`Active listings：${fmtInt(activeAds)}個（広告あり）`);
     }
-    lines.push("");
     lines.push(`回転率：${rotationInt}% / 月`);
-    lines.push("");
     lines.push(`在庫期間：${inventoryTxt}ヵ月`);
     lines.push(`判定結果：${judge}`);
-    lines.push(`日付：${today}`);
-    lines.push("");
     lines.push(`Product Research URL：${researchUrl}`);
+    lines.push(`日付：${today}`);
 
     document.getElementById("resultText").value = lines.join("\n");
     document.getElementById("copyArea").style.display = "block";
