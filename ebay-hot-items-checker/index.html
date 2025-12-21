@@ -22,7 +22,7 @@
       padding: 16px;
       margin-bottom: 16px;
     }
-    label { display: block; margin-top: 10px; font-weight: 700; }
+    label { display: block; margin-top: 10px; font-weight: 800; }
     input, select, textarea {
       width: 100%;
       padding: 10px;
@@ -47,9 +47,10 @@
 
     .small { font-size: 0.9rem; color: #555; margin-top: 8px; }
     .result { font-size: 1.05rem; margin-top: 10px; }
-    .hot { color: #d32f2f; font-weight: 800; }
-    .warm { color: #f57c00; font-weight: 800; }
-    .cold { color: #1976d2; font-weight: 800; }
+
+    .hot { color: #d32f2f; font-weight: 900; }
+    .warm { color: #f57c00; font-weight: 900; }
+    .cold { color: #1976d2; font-weight: 900; }
 
     .kv {
       background: #fafafa;
@@ -57,12 +58,20 @@
       border-radius: 8px;
       padding: 10px;
       margin-top: 10px;
-      word-break: break-all;
+      word-break: break-word;
     }
     .row2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
+    }
+    .row3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 720px) {
+      .row3 { grid-template-columns: 1fr; }
     }
     @media (max-width: 640px) {
       .row2 { grid-template-columns: 1fr; }
@@ -77,12 +86,12 @@
 
 <div class="card">
   <label>① 型番 / キーワード</label>
-  <input id="keyword" type="text" placeholder="例：D750 / Nikon D750">
+  <input id="keyword" type="text" placeholder="例：D750 / Tamron 70-180mm f/2.8 Sony E Di III VXD">
 
   <div class="row2">
     <div>
-      <label>② 売れ筋だと思う価格（中心値 / USD）</label>
-      <input id="price" type="number" inputmode="decimal" placeholder="例：800">
+      <label>② 価格（中心値 / USD）</label>
+      <input id="price" type="number" inputmode="decimal" placeholder="例：750">
     </div>
     <div>
       <label>③ 価格レンジ（±%）</label>
@@ -106,21 +115,24 @@
   <button class="btn-primary" onclick="openProductResearch()">eBay Product Research（Sold）を開く</button>
 
   <div class="small">
-    ※ Product Research画面で「Sold数」「出品数」を確認して、下に入力してください（またはコピペ抽出を後で追加可能）
+    ※ Product Research画面を見て「⑤ Sold数」「⑥ Active listings」「⑦ 広告利用割合」を入力してください（URLはコピー文にのみ含めます）
   </div>
-
-  <div id="generatedUrlBox" class="kv" style="display:none;"></div>
 </div>
 
 <div class="card">
-  <div class="row2">
+  <div class="row3">
     <div>
-      <label>⑤ 指定期間で売れた数（Sold）</label>
-      <input id="sold" type="number" inputmode="numeric" placeholder="例：30">
+      <label>⑤ 指定期間Sold数</label>
+      <input id="sold" type="number" inputmode="numeric" placeholder="例：45">
     </div>
     <div>
-      <label>⑥ 現在の出品数（Active listings）</label>
-      <input id="active" type="number" inputmode="numeric" placeholder="例：10">
+      <label>⑥ Active listings（出品数）</label>
+      <input id="active" type="number" inputmode="numeric" placeholder="例：34">
+    </div>
+    <div>
+      <label>⑦ 広告利用割合（Promoted listings %）</label>
+      <input id="promoted" type="number" inputmode="numeric" placeholder="例：50（未入力OK）" min="0" max="100">
+      <div class="small">※ 例：50 → 出品数 × 0.5 を「広告あり出品数」として計算</div>
     </div>
   </div>
 
@@ -130,7 +142,7 @@
 
   <div id="copyArea" style="display:none;">
     <label style="margin-top:14px;">判定結果（コピー用）</label>
-    <textarea id="resultText" rows="10" readonly></textarea>
+    <textarea id="resultText" rows="14" readonly></textarea>
     <button class="btn-copy" onclick="copyResult()">判定結果をコピー</button>
     <div id="copyMsg" class="small"></div>
   </div>
@@ -144,11 +156,27 @@
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  function fmtInt(n) {
+    if (!isFinite(n)) return "0";
+    return Math.round(n).toString();
+  }
+
+  function fmtMoney(n) {
+    if (!isFinite(n)) return "$0";
+    return "$" + Math.round(n).toLocaleString("en-US");
+  }
+
+  function fmtMonths(n) {
+    if (!isFinite(n)) return "∞";
+    // 見た目をスッキリ：2.0 なら 2、2.3 なら 2.3
+    const r = Math.round(n * 10) / 10;
+    return (Math.abs(r - Math.round(r)) < 1e-9) ? String(Math.round(r)) : String(r);
+  }
+
   function buildProductResearchUrl({keyword, minPrice, maxPrice, dayRange}) {
     const endDate = Date.now(); // ms
     const startDate = endDate - (Number(dayRange) * 24 * 60 * 60 * 1000);
 
-    // 参考URLに合わせてクエリを構築（tabName=SOLD、sorting=-avgsalesprice、tz=Asia/Tokyo）
     const params = new URLSearchParams({
       marketplace: "EBAY-US",
       keywords: keyword,
@@ -174,7 +202,7 @@
     const range = Number(document.getElementById("range").value);
     const dayRange = Number(document.getElementById("dayRange").value);
 
-    if (!keyword) { alert("① 型番 / キーワードを入力してください"); return; }
+    if (!keyword) { alert("① キーワードを入力してください"); return; }
     if (!price || price <= 0) { alert("② 価格（中心値）を入力してください"); return; }
 
     const minPrice = Math.max(0, Math.floor(price * (1 - range / 100)));
@@ -182,16 +210,7 @@
 
     const url = buildProductResearchUrl({ keyword, minPrice, maxPrice, dayRange });
 
-    // 表示用
-    const box = document.getElementById("generatedUrlBox");
-    box.style.display = "block";
-    box.innerHTML = `
-      <b>生成したProduct Research URL：</b><br>
-      ${url}<br>
-      <span class="small">（価格範囲：${minPrice} - ${maxPrice} USD / 期間：${dayRange}日）</span>
-    `;
-
-    // 後で判定欄に入れるため保持
+    // 判定時に使うため保持
     window.__lastResearchUrl = url;
     window.__lastMinPrice = minPrice;
     window.__lastMaxPrice = maxPrice;
@@ -204,16 +223,19 @@
     const price = Number(document.getElementById("price").value);
     const range = Number(document.getElementById("range").value);
     const dayRange = Number(document.getElementById("dayRange").value);
+
     const soldRaw = document.getElementById("sold").value;
     const activeRaw = document.getElementById("active").value;
+    const promotedRaw = document.getElementById("promoted").value;
 
-    if (!keyword) { alert("① 型番 / キーワードを入力してください"); return; }
+    if (!keyword) { alert("① キーワードを入力してください"); return; }
     if (!price || price <= 0) { alert("② 価格（中心値）を入力してください"); return; }
-    if (soldRaw === "" || activeRaw === "") { alert("⑤ Sold数 と ⑥ 出品数 を入力してください"); return; }
+    if (soldRaw === "" || activeRaw === "") { alert("⑤ Sold数 と ⑥ Active listings を入力してください"); return; }
 
     const sold = Number(soldRaw);
     const active = Number(activeRaw);
 
+    // 価格レンジ
     const minPrice = (window.__lastMinPrice != null)
       ? window.__lastMinPrice
       : Math.max(0, Math.floor(price * (1 - range / 100)));
@@ -222,23 +244,37 @@
       ? window.__lastMaxPrice
       : Math.ceil(price * (1 + range / 100));
 
+    // URL（表示はしないが、コピー文に入れる）
     const researchUrl = window.__lastResearchUrl
       ? window.__lastResearchUrl
       : buildProductResearchUrl({ keyword, minPrice, maxPrice, dayRange });
 
-    // 月換算：30日を1か月として換算
-    const monthlySales = (dayRange > 0) ? (sold / (dayRange / 30)) : 0;
+    // 月間Sold数：30日=1か月換算
+    const monthlySold = (dayRange > 0) ? (sold / (dayRange / 30)) : 0;
 
-    // 吸収月数：出品数 / 月間販売ペース
-    const absorptionMonths = (monthlySales > 0) ? (active / monthlySales) : Infinity;
+    // 広告ありの「強いライバル数」
+    let promotedPct = null;
+    if (promotedRaw !== "") {
+      const p = Number(promotedRaw);
+      if (isFinite(p) && p >= 0 && p <= 100) promotedPct = p;
+    }
 
-    // 判定
+    const activeWithAds = (promotedPct == null) ? null : (active * (promotedPct / 100));
+    const effectiveActive = (activeWithAds == null) ? active : activeWithAds;
+
+    // 回転率：月間Sold / 現在出品数（effective） * 100
+    const rotationRate = (effectiveActive > 0) ? (monthlySold / effectiveActive * 100) : 0;
+
+    // 在庫期間（月）：現在出品数（effective） / 月間Sold
+    const inventoryMonths = (monthlySold > 0) ? (effectiveActive / monthlySold) : Infinity;
+
+    // 判定（在庫期間ベース）
     let judge = "";
     let cls = "";
-    if (absorptionMonths <= 1.5) {
+    if (inventoryMonths <= 1.5) {
       judge = "🔥 HOT：回転が非常に良い（狙い目）";
       cls = "hot";
-    } else if (absorptionMonths <= 4) {
+    } else if (inventoryMonths <= 4) {
       judge = "🌤 WARM：条件次第でOK（価格・状態勝負）";
       cls = "warm";
     } else {
@@ -246,49 +282,57 @@
       cls = "cold";
     }
 
-    // 表示
-    const today = ymd(new Date());
+    // 画面表示（指定の表現）
+    const monthlySoldInt = fmtInt(monthlySold);
+    const rotationInt = fmtInt(rotationRate);
+    const inventoryTxt = fmtMonths(inventoryMonths);
 
-    const outputHtml = `
+    const currentListingsLabel = (activeWithAds == null)
+      ? `現在出品数：${fmtInt(active)}個`
+      : `現在出品数：${fmtInt(active)}個（広告あり）`;
+
+    const currentListingsEffectiveLine = (activeWithAds == null)
+      ? ""
+      : `<br>現在出品数（広告あり）：${fmtInt(activeWithAds)}個`;
+
+    document.getElementById("output").innerHTML = `
       <div class="result">
-        <b>月換算の売れた数：</b> ${isFinite(monthlySales) ? monthlySales.toFixed(2) : "0.00"} 個 / 月<br>
-        <b>出品吸収目安：</b> ${isFinite(absorptionMonths) ? absorptionMonths.toFixed(1) : "∞"} か月
+        <b>指定期間Sold数：</b>${fmtInt(sold)}（${dayRange}日）<br>
+        <b>月間Sold数：</b>${monthlySoldInt}個 / 月<br>
+        <b>${currentListingsLabel}</b>${currentListingsEffectiveLine}<br>
+        <b>回転率：</b>${rotationInt}% / 月<br>
+        <b>在庫期間：</b>${inventoryTxt}ヵ月
       </div>
       <div class="result ${cls}">
-        <b>判定：</b> ${judge}
-      </div>
-
-      <div class="kv">
-        <b>入力サマリー（①〜⑥＋URL＋日付）</b><br>
-        ① キーワード：${escapeHtml(keyword)}<br>
-        ② 中心価格：${price} USD<br>
-        ③ レンジ：±${range}%（${minPrice} - ${maxPrice} USD）<br>
-        ④ 期間：${dayRange}日<br>
-        ⑤ Sold：${sold}<br>
-        ⑥ Active：${active}<br>
-        URL：${researchUrl}<br>
-        日付：${today}
+        <b>判定結果：</b>${judge}
       </div>
     `;
 
-    document.getElementById("output").innerHTML = outputHtml;
+    // コピー文（指定フォーマット）
+    const today = ymd(new Date());
 
-    // コピー用テキスト
-    const text =
-`【eBay Hot Items Checker 判定】
-① キーワード：${keyword}
-② 中心価格：${price} USD
-③ レンジ：±${range}%（${minPrice} - ${maxPrice} USD）
-④ 期間：${dayRange}日
-⑤ Sold：${sold}
-⑥ Active：${active}
-月換算の売れた数：${isFinite(monthlySales) ? monthlySales.toFixed(2) : "0.00"} 個 / 月
-出品吸収目安：${isFinite(absorptionMonths) ? absorptionMonths.toFixed(1) : "∞"} か月
-判定：${judge}
-URL：${researchUrl}
-日付：${today}`;
+    const lines = [];
+    lines.push("eBay Hot Items Checker");
+    lines.push(`■キーワード：${keyword}`);
+    lines.push(`価格（中心値）：${fmtMoney(price)}`);
+    lines.push(`価格レンジ：±${range}%（${fmtMoney(minPrice)} - ${fmtMoney(maxPrice)}）`);
+    lines.push(`期間：${dayRange}日`);
+    lines.push(`Sold：${fmtInt(sold)}個`);
+    lines.push(`月換算 Sold：${monthlySoldInt}個 / 月`);
+    lines.push(`Active listings：${fmtInt(active)}個`);
+    if (activeWithAds != null) {
+      lines.push(`Active listings：${fmtInt(activeWithAds)}個（広告あり）`);
+    }
+    lines.push("");
+    lines.push(`回転率：${rotationInt}% / 月`);
+    lines.push("");
+    lines.push(`在庫期間：${inventoryTxt}ヵ月`);
+    lines.push(`判定結果：${judge}`);
+    lines.push(`日付：${today}`);
+    lines.push("");
+    lines.push(`Product Research URL：${researchUrl}`);
 
-    document.getElementById("resultText").value = text;
+    document.getElementById("resultText").value = lines.join("\n");
     document.getElementById("copyArea").style.display = "block";
     document.getElementById("copyMsg").textContent = "";
   }
@@ -299,24 +343,12 @@ URL：${researchUrl}
       await navigator.clipboard.writeText(txt);
       document.getElementById("copyMsg").textContent = "コピーしました ✅";
     } catch (e) {
-      // フォールバック：選択してコピー
       const ta = document.getElementById("resultText");
       ta.focus();
       ta.select();
-      document.getElementById("copyMsg").textContent = "クリップボードに直接コピーできないため、選択状態にしました（Ctrl+Cでコピーしてください）";
+      document.getElementById("copyMsg").textContent =
+        "クリップボードに直接コピーできないため、選択状態にしました（Ctrl+Cでコピーしてください）";
     }
-  }
-
-  function escapeHtml(str) {
-    return str.replace(/[&<>"']/g, function(m) {
-      return ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-      })[m];
-    });
   }
 </script>
 
