@@ -9,8 +9,7 @@
       font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
       max-width: 900px; margin:0 auto; padding:16px; line-height:1.6;
     }
-    h1{ font-size:1.4rem; margin:0 0 4px; }
-    .sub{ color:#555; font-size:.9rem; margin-bottom:16px; }
+    h1{ font-size:1.4rem; margin:0 0 10px; }
     .card{ border:1px solid #ddd; border-radius:10px; padding:16px; margin-bottom:16px; }
     label{ display:block; margin-top:10px; font-weight:800; }
     input,select,textarea{
@@ -40,22 +39,21 @@
 <body>
 
 <h1>🔥 eBay Hot Items Checker</h1>
-<div class="sub">今の需要 × 供給で「狙い目」かを見極めるツール（スクレイピングなし / 2系統チェック対応）</div>
 
 <div class="card">
-  <label>① 型番 / キーワード</label>
+  <label>型番 / キーワード</label>
   <input id="keyword" type="text" placeholder="例：Nikon 50mm F/1.4 Ai-s">
 
   <div class="row2">
     <div>
-      <label>② 状態</label>
+      <label>状態</label>
       <select id="condition">
         <option value="USED" selected>Used</option>
         <option value="NEW">New</option>
       </select>
     </div>
     <div>
-      <label>④ リサーチ期間（Product Research用）</label>
+      <label>リサーチ期間（Product Research用）</label>
       <select id="dayRange">
         <option value="30">30日</option>
         <option value="90" selected>90日</option>
@@ -81,7 +79,7 @@
       <input id="fx" type="number" inputmode="decimal" placeholder="例：150" value="150">
     </div>
     <div>
-      <label>③ 売れ筋の価格レンジ（±%）</label>
+      <label>売れ筋の価格レンジ（±%）</label>
       <select id="range">
         <option value="2">±2%</option>
         <option value="5">±5%</option>
@@ -99,9 +97,6 @@
   </div>
 
   <div class="small">
-    ※ Product Research：価格はUSDで検索（JPY入力の場合は為替でUSDへ変換して検索）<br>
-    ※ Advanced Research：価格はJPYで検索（USD入力の場合は為替でJPYへ変換して検索）<br>
-    ※ 両方とも「価格高い順」で表示します<br>
     ※ Advanced Researchは常に90日相当（期間設定は反映しません）
   </div>
 </div>
@@ -109,15 +104,15 @@
 <div class="card">
   <div class="row3">
     <div>
-      <label>⑤ 指定期間Sold数</label>
-      <input id="sold" type="number" inputmode="numeric" placeholder="例：45">
+      <label>指定期間Sold数</label>
+      <input id="sold" type="number" inputmode="numeric" placeholder="例：20">
     </div>
     <div>
-      <label>⑥ Active listings（出品数）</label>
-      <input id="active" type="number" inputmode="numeric" placeholder="例：34">
+      <label>Active listings（出品数）</label>
+      <input id="active" type="number" inputmode="numeric" placeholder="例：40">
     </div>
     <div>
-      <label>⑦ 広告利用率（Promoted listings）</label>
+      <label>広告利用率（Promoted listings）</label>
       <input id="promoted" type="number" inputmode="numeric" placeholder="例：50（未入力OK）" min="0" max="100">
     </div>
   </div>
@@ -152,6 +147,19 @@
   function conditionIdFromSelect(v){ return v==="NEW" ? "1000" : "3000"; }
   function conditionTextFromSelect(v){ return v==="NEW" ? "New" : "Used"; }
 
+  function isMobile(){
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+  }
+
+  // スマホでeBayがアプリ起動して条件が崩れる対策：Googleリダイレクト経由でブラウザ表示を狙う
+  function openPreferBrowser(url){
+    const finalUrl = isMobile()
+      ? `https://www.google.com/url?q=${encodeURIComponent(url)}`
+      : url;
+
+    window.open(finalUrl, "_blank", "noopener,noreferrer");
+  }
+
   function getFx(){
     const fx = Number(document.getElementById("fx").value);
     return (isFinite(fx) && fx > 0) ? fx : 150;
@@ -180,7 +188,7 @@
     return {min, max};
   }
 
-  // ✅ Product Research：ユーザーの「高い順URL」に合わせて sorting=-avgsalesprice を採用
+  // Product Research：ユーザー提示URLに合わせて sorting=-avgsalesprice（高い順）
   function buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId}){
     const endDate = Date.now();
     const startDate = endDate - (Number(dayRange) * 24 * 60 * 60 * 1000);
@@ -199,7 +207,6 @@
       tz:"Asia/Tokyo"
     });
 
-    // 価格レンジは指定がある時だけ付与
     if (minUsd != null && maxUsd != null) {
       params.set("minPrice", String(minUsd));
       params.set("maxPrice", String(maxUsd));
@@ -209,7 +216,7 @@
     return `https://www.ebay.com/sh/research?${params.toString()}`;
   }
 
-  // ✅ Advanced Research：ユーザーの「高い順URL」に合わせて _sop=16 を採用
+  // Advanced Research：ユーザー提示URLに合わせて _sop=16（高い順）
   function buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId}){
     const params = new URLSearchParams({
       _nkw: keyword,
@@ -219,7 +226,6 @@
       _sop: "16"
     });
 
-    // 状態/価格レンジは指定がある時だけ付与
     if (conditionId) params.set("LH_ItemCondition", String(conditionId));
     if (minJpy != null && maxJpy != null) {
       params.set("_udlo", String(minJpy));
@@ -236,9 +242,8 @@
     const dayRange = Number(document.getElementById("dayRange").value);
     const rangePct = Number(document.getElementById("range").value);
 
-    if(!keyword){ alert("① キーワードを入力してください"); return; }
+    if(!keyword){ alert("キーワードを入力してください"); return; }
 
-    // 価格入力がない場合でも、参考URL同様「高い順」で一覧を開けるようにする
     const prices = resolveCenterPrices();
     let minUsd = null, maxUsd = null;
     if (prices) {
@@ -247,15 +252,8 @@
     }
 
     const url = buildProductResearchUrl({ keyword, minUsd, maxUsd, dayRange, conditionId });
-
     window.__lastProductUrl = url;
-    window.__lastConditionText = conditionTextFromSelect(condSel);
-    window.__lastConditionId = conditionId;
-    window.__lastDayRange = dayRange;
-    window.__lastRangePct = rangePct;
-    window.__lastFx = getFx();
-
-    window.open(url, "_blank");
+    openPreferBrowser(url);
   }
 
   function openAdvancedResearch(){
@@ -264,7 +262,7 @@
     const conditionId = conditionIdFromSelect(condSel);
     const rangePct = Number(document.getElementById("range").value);
 
-    if(!keyword){ alert("① キーワードを入力してください"); return; }
+    if(!keyword){ alert("キーワードを入力してください"); return; }
 
     const prices = resolveCenterPrices();
     let minJpy = null, maxJpy = null;
@@ -274,14 +272,8 @@
     }
 
     const url = buildAdvancedResearchUrl({ keyword, minJpy, maxJpy, conditionId });
-
     window.__lastAdvancedUrl = url;
-    window.__lastConditionText = conditionTextFromSelect(condSel);
-    window.__lastConditionId = conditionId;
-    window.__lastRangePct = rangePct;
-    window.__lastFx = getFx();
-
-    window.open(url, "_blank");
+    openPreferBrowser(url);
   }
 
   function calculate(){
@@ -296,8 +288,8 @@
     const activeRaw = document.getElementById("active").value;
     const promotedRaw = document.getElementById("promoted").value;
 
-    if(!keyword){ alert("① キーワードを入力してください"); return; }
-    if(soldRaw==="" || activeRaw===""){ alert("⑤ Sold数 と ⑥ Active listings を入力してください"); return; }
+    if(!keyword){ alert("キーワードを入力してください"); return; }
+    if(soldRaw==="" || activeRaw===""){ alert("Sold数とActive listingsを入力してください"); return; }
 
     const sold = Number(soldRaw);
     const active = Number(activeRaw);
@@ -305,7 +297,6 @@
     const prices = resolveCenterPrices();
     const fx = getFx();
 
-    // コピー文用：中心値が未入力なら空欄扱い（URLは作れる）
     let usdCenter=null, jpyCenter=null, mmUsd=null, mmJpy=null;
     if (prices) {
       usdCenter = prices.usdCenter;
@@ -344,9 +335,16 @@
     const inventoryMonths = (monthlySold>0) ? (effectiveActive/monthlySold) : Infinity;
 
     let judge="", cls="";
-    if(inventoryMonths<=1.5){ judge="🔥 HOT：回転が非常に良い（狙い目）"; cls="hot"; }
-    else if(inventoryMonths<=4){ judge="🌤 WARM：条件次第でOK（価格・状態勝負）"; cls="warm"; }
-    else { judge="❄ COLD：寝る可能性が高い"; cls="cold"; }
+    if(inventoryMonths<=1.5){
+      judge="🔥 HOT：すぐに売れる商品（狙い目）";
+      cls="hot";
+    } else if(inventoryMonths<=4){
+      judge="🌤 WARM：比較的売れやすい（価格・状態次第）";
+      cls="warm";
+    } else {
+      judge="❄ COLD：長期在庫になりやすい";
+      cls="cold";
+    }
 
     const monthlySoldInt = fmtInt(monthlySold);
     const rotationInt = fmtInt(rotationRate);
@@ -366,7 +364,6 @@
     document.getElementById("output").innerHTML = html;
 
     const today = ymd(new Date());
-
     const lines=[];
     lines.push("eBay Hot Items Checker");
     lines.push(`■キーワード：${keyword}`);
