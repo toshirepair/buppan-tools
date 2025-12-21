@@ -61,7 +61,6 @@
         <option value="90" selected>90日</option>
         <option value="180">180日</option>
       </select>
-      <div class="small">※ Advanced Researchは常に90日相当（期間設定は反映しません）</div>
     </div>
   </div>
 
@@ -101,8 +100,9 @@
 
   <div class="small">
     ※ Product Research：価格はUSDで検索（JPY入力の場合は為替でUSDへ変換して検索）<br>
-    ※ Advanced Research：価格はJPYで検索（USD入力の場合は為替でJPYへ変換して検索）/ 期間は固定でOK<br>
-    ※ 両方とも「価格高い順」で表示します
+    ※ Advanced Research：価格はJPYで検索（USD入力の場合は為替でJPYへ変換して検索）<br>
+    ※ 両方とも「価格高い順」で表示します<br>
+    ※ Advanced Researchは常に90日相当（期間設定は反映しません）
   </div>
 </div>
 
@@ -180,8 +180,7 @@
     return {min, max};
   }
 
-  // Product Research（USDで検索）
-  // sorting：価格高い順に寄せたいので、-salesprice を採用（平均価格より“価格そのもの”優先）
+  // ✅ Product Research：ユーザーの「高い順URL」に合わせて sorting=-avgsalesprice を採用
   function buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId}){
     const endDate = Date.now();
     const startDate = endDate - (Number(dayRange) * 24 * 60 * 60 * 1000);
@@ -193,31 +192,40 @@
       endDate: String(endDate),
       startDate: String(startDate),
       categoryId:"0",
-      minPrice: String(minUsd),
-      maxPrice: String(maxUsd),
       offset:"0",
       limit:"50",
-      sorting:"-salesprice",
+      sorting:"-avgsalesprice",
       tabName:"SOLD",
       tz:"Asia/Tokyo"
     });
+
+    // 価格レンジは指定がある時だけ付与
+    if (minUsd != null && maxUsd != null) {
+      params.set("minPrice", String(minUsd));
+      params.set("maxPrice", String(maxUsd));
+    }
     if (conditionId) params.set("conditionId", conditionId);
+
     return `https://www.ebay.com/sh/research?${params.toString()}`;
   }
 
-  // Advanced Research（JPYで検索）※価格高い順＝_sop=3
+  // ✅ Advanced Research：ユーザーの「高い順URL」に合わせて _sop=16 を採用
   function buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId}){
     const params = new URLSearchParams({
       _nkw: keyword,
       _sacat: "0",
       _from: "R40",
-      _sop: "3", // 価格高い順
-      LH_ItemCondition: String(conditionId || "3000"),
       LH_Sold: "1",
-      rt: "nc",
-      _udlo: String(minJpy),
-      _udhi: String(maxJpy)
+      _sop: "16"
     });
+
+    // 状態/価格レンジは指定がある時だけ付与
+    if (conditionId) params.set("LH_ItemCondition", String(conditionId));
+    if (minJpy != null && maxJpy != null) {
+      params.set("_udlo", String(minJpy));
+      params.set("_udhi", String(maxJpy));
+    }
+
     return `https://www.ebay.com/sch/i.html?${params.toString()}`;
   }
 
@@ -230,23 +238,22 @@
 
     if(!keyword){ alert("① キーワードを入力してください"); return; }
 
+    // 価格入力がない場合でも、参考URL同様「高い順」で一覧を開けるようにする
     const prices = resolveCenterPrices();
-    if(!prices){ alert("USD か JPY のどちらかで中心値を入力してください"); return; }
+    let minUsd = null, maxUsd = null;
+    if (prices) {
+      const mm = calcMinMax(prices.usdCenter, rangePct);
+      minUsd = mm.min; maxUsd = mm.max;
+    }
 
-    const {min:minUsd, max:maxUsd} = calcMinMax(prices.usdCenter, rangePct);
-
-    const url = buildProductResearchUrl({
-      keyword, minUsd, maxUsd, dayRange, conditionId
-    });
+    const url = buildProductResearchUrl({ keyword, minUsd, maxUsd, dayRange, conditionId });
 
     window.__lastProductUrl = url;
-    window.__lastMinUsd = minUsd;
-    window.__lastMaxUsd = maxUsd;
     window.__lastConditionText = conditionTextFromSelect(condSel);
     window.__lastConditionId = conditionId;
     window.__lastDayRange = dayRange;
     window.__lastRangePct = rangePct;
-    window.__lastFx = prices.fx;
+    window.__lastFx = getFx();
 
     window.open(url, "_blank");
   }
@@ -260,21 +267,19 @@
     if(!keyword){ alert("① キーワードを入力してください"); return; }
 
     const prices = resolveCenterPrices();
-    if(!prices){ alert("USD か JPY のどちらかで中心値を入力してください"); return; }
+    let minJpy = null, maxJpy = null;
+    if (prices) {
+      const mm = calcMinMax(prices.jpyCenter, rangePct);
+      minJpy = mm.min; maxJpy = mm.max;
+    }
 
-    const {min:minJpy, max:maxJpy} = calcMinMax(prices.jpyCenter, rangePct);
-
-    const url = buildAdvancedResearchUrl({
-      keyword, minJpy, maxJpy, conditionId
-    });
+    const url = buildAdvancedResearchUrl({ keyword, minJpy, maxJpy, conditionId });
 
     window.__lastAdvancedUrl = url;
-    window.__lastMinJpy = minJpy;
-    window.__lastMaxJpy = maxJpy;
     window.__lastConditionText = conditionTextFromSelect(condSel);
     window.__lastConditionId = conditionId;
     window.__lastRangePct = rangePct;
-    window.__lastFx = prices.fx;
+    window.__lastFx = getFx();
 
     window.open(url, "_blank");
   }
@@ -292,22 +297,36 @@
     const promotedRaw = document.getElementById("promoted").value;
 
     if(!keyword){ alert("① キーワードを入力してください"); return; }
-    const prices = resolveCenterPrices();
-    if(!prices){ alert("USD か JPY のどちらかで中心値を入力してください"); return; }
     if(soldRaw==="" || activeRaw===""){ alert("⑤ Sold数 と ⑥ Active listings を入力してください"); return; }
 
     const sold = Number(soldRaw);
     const active = Number(activeRaw);
 
-    const mmUsd = calcMinMax(prices.usdCenter, rangePct);
-    const mmJpy = calcMinMax(prices.jpyCenter, rangePct);
+    const prices = resolveCenterPrices();
+    const fx = getFx();
+
+    // コピー文用：中心値が未入力なら空欄扱い（URLは作れる）
+    let usdCenter=null, jpyCenter=null, mmUsd=null, mmJpy=null;
+    if (prices) {
+      usdCenter = prices.usdCenter;
+      jpyCenter = prices.jpyCenter;
+      mmUsd = calcMinMax(usdCenter, rangePct);
+      mmJpy = calcMinMax(jpyCenter, rangePct);
+    }
 
     const productUrl = window.__lastProductUrl || buildProductResearchUrl({
-      keyword, minUsd:mmUsd.min, maxUsd:mmUsd.max, dayRange, conditionId
+      keyword,
+      minUsd: mmUsd ? mmUsd.min : null,
+      maxUsd: mmUsd ? mmUsd.max : null,
+      dayRange,
+      conditionId
     });
 
     const advancedUrl = window.__lastAdvancedUrl || buildAdvancedResearchUrl({
-      keyword, minJpy:mmJpy.min, maxJpy:mmJpy.max, conditionId
+      keyword,
+      minJpy: mmJpy ? mmJpy.min : null,
+      maxJpy: mmJpy ? mmJpy.max : null,
+      conditionId
     });
 
     const monthlySold = (dayRange>0) ? (sold / (dayRange/30)) : 0;
@@ -347,15 +366,22 @@
     document.getElementById("output").innerHTML = html;
 
     const today = ymd(new Date());
-    const fx = prices.fx;
 
     const lines=[];
     lines.push("eBay Hot Items Checker");
     lines.push(`■キーワード：${keyword}`);
     lines.push(`状態：${conditionText}`);
-    lines.push(`売れ筋の価格（中心値）：${fmtMoneyUsd(prices.usdCenter)} / ${fmtMoneyJpy(prices.jpyCenter)}`);
-    lines.push(`売れ筋の価格レンジ：±${rangePct}%（${fmtMoneyUsd(mmUsd.min)} - ${fmtMoneyUsd(mmUsd.max)} / ${fmtMoneyJpy(mmJpy.min)} - ${fmtMoneyJpy(mmJpy.max)}）`);
-    lines.push(`為替：1 USD = ${fx} JPY`);
+
+    if (usdCenter != null && jpyCenter != null && mmUsd && mmJpy) {
+      lines.push(`売れ筋の価格（中心値）：${fmtMoneyUsd(usdCenter)} / ${fmtMoneyJpy(jpyCenter)}`);
+      lines.push(`売れ筋の価格レンジ：±${rangePct}%（${fmtMoneyUsd(mmUsd.min)} - ${fmtMoneyUsd(mmUsd.max)} / ${fmtMoneyJpy(mmJpy.min)} - ${fmtMoneyJpy(mmJpy.max)}）`);
+      lines.push(`為替：1 USD = ${fx} JPY`);
+    } else {
+      lines.push(`売れ筋の価格（中心値）：`);
+      lines.push(`売れ筋の価格レンジ：±${rangePct}%（）`);
+      lines.push(`為替：1 USD = ${fx} JPY`);
+    }
+
     lines.push(`期間：${dayRange}日`);
     lines.push(`Sold：${fmtInt(sold)}個`);
     lines.push(`月換算 Sold：${monthlySoldInt}個 / 月`);
