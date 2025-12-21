@@ -4,77 +4,43 @@
   <meta charset="UTF-8">
   <title>eBay Hot Items Checker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 16px;
-      line-height: 1.6;
+    body{
+      font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      max-width: 900px; margin:0 auto; padding:16px; line-height:1.6;
     }
-    h1 { font-size: 1.4rem; margin: 0 0 4px; }
-    .sub { color: #555; font-size: 0.9rem; margin-bottom: 16px; }
+    h1{ font-size:1.4rem; margin:0 0 4px; }
+    .sub{ color:#555; font-size:.9rem; margin-bottom:16px; }
+    .card{ border:1px solid #ddd; border-radius:10px; padding:16px; margin-bottom:16px; }
+    label{ display:block; margin-top:10px; font-weight:800; }
+    input,select,textarea{
+      width:100%; padding:10px; margin-top:6px; font-size:1rem;
+      border-radius:8px; border:1px solid #ccc; box-sizing:border-box;
+    }
+    button{
+      margin-top:14px; padding:10px; width:100%;
+      font-size:1rem; border-radius:8px; border:none; cursor:pointer;
+    }
+    .btn-primary{ background:#0073e6; color:#fff; }
+    .btn-secondary{ background:#eee; }
+    .btn-copy{ background:#444; color:#fff; }
+    .small{ font-size:.9rem; color:#555; margin-top:8px; }
+    .result{ font-size:1.05rem; margin-top:10px; }
 
-    .card {
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-    label { display: block; margin-top: 10px; font-weight: 800; }
-    input, select, textarea {
-      width: 100%;
-      padding: 10px;
-      margin-top: 6px;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    button {
-      margin-top: 14px;
-      padding: 10px;
-      width: 100%;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-    }
-    .btn-primary { background: #0073e6; color: #fff; }
-    .btn-secondary { background: #eee; }
-    .btn-copy { background: #444; color: #fff; }
+    .hot{ color:#d32f2f; font-weight:900; }
+    .warm{ color:#f57c00; font-weight:900; }
+    .cold{ color:#1976d2; font-weight:900; }
 
-    .small { font-size: 0.9rem; color: #555; margin-top: 8px; }
-    .result { font-size: 1.05rem; margin-top: 10px; }
-
-    .hot { color: #d32f2f; font-weight: 900; }
-    .warm { color: #f57c00; font-weight: 900; }
-    .cold { color: #1976d2; font-weight: 900; }
-
-    .row2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .row3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 12px;
-    }
-    @media (max-width: 720px) {
-      .row3 { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 640px) {
-      .row2 { grid-template-columns: 1fr; }
-    }
+    .row2{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .row3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
+    @media(max-width:720px){ .row3{ grid-template-columns:1fr; } }
+    @media(max-width:640px){ .row2{ grid-template-columns:1fr; } }
   </style>
 </head>
-
 <body>
 
 <h1>🔥 eBay Hot Items Checker</h1>
-<div class="sub">今の需要 × 供給で「狙い目」かを見極めるツール（スクレイピングなし）</div>
+<div class="sub">今の需要 × 供給で「狙い目」かを見極めるツール（スクレイピングなし / 2系統チェック対応）</div>
 
 <div class="card">
   <label>① 型番 / キーワード</label>
@@ -89,32 +55,53 @@
       </select>
     </div>
     <div>
-      <label>売れ筋の価格（中心値 / USD）</label>
-      <input id="price" type="number" inputmode="decimal" placeholder="例：750">
+      <label>④ リサーチ期間（Product Research用）</label>
+      <select id="dayRange">
+        <option value="30">30日</option>
+        <option value="90" selected>90日</option>
+        <option value="180">180日</option>
+      </select>
+      <div class="small">※ Advanced Researchは常に90日相当（期間設定は反映しません）</div>
     </div>
   </div>
 
-  <label>③ 売れ筋の価格レンジ（±%）</label>
-  <select id="range">
-    <option value="2">±2%</option>
-    <option value="5">±5%</option>
-    <option value="10" selected>±10%</option>
-    <option value="15">±15%</option>
-    <option value="20">±20%</option>
-    <option value="25">±25%</option>
-  </select>
+  <div class="row2">
+    <div>
+      <label>売れ筋の価格（中心値 / USD）</label>
+      <input id="priceUsd" type="number" inputmode="decimal" placeholder="例：750（未入力OK）">
+    </div>
+    <div>
+      <label>売れ筋の価格（中心値 / JPY）</label>
+      <input id="priceJpy" type="number" inputmode="numeric" placeholder="例：80000（未入力OK）">
+    </div>
+  </div>
 
-  <label>④ リサーチ期間</label>
-  <select id="dayRange">
-    <option value="30">30日</option>
-    <option value="90" selected>90日</option>
-    <option value="180">180日</option>
-  </select>
+  <div class="row2">
+    <div>
+      <label>為替レート（1 USD = ? JPY）</label>
+      <input id="fx" type="number" inputmode="decimal" placeholder="例：150（JPY入力や円⇄ドル変換に使用）" value="150">
+    </div>
+    <div>
+      <label>③ 売れ筋の価格レンジ（±%）</label>
+      <select id="range">
+        <option value="2">±2%</option>
+        <option value="5">±5%</option>
+        <option value="10" selected>±10%</option>
+        <option value="15">±15%</option>
+        <option value="20">±20%</option>
+        <option value="25">±25%</option>
+      </select>
+    </div>
+  </div>
 
-  <button class="btn-primary" onclick="openProductResearch()">eBay Product Research（Sold）を開く</button>
+  <div class="row2">
+    <button class="btn-primary" onclick="openProductResearch()">eBay Product Research（Sold）を開く</button>
+    <button class="btn-secondary" onclick="openAdvancedResearch()">Advanced Research（Sold）を開く</button>
+  </div>
 
   <div class="small">
-    ※ Product Research画面を見て「⑤ Sold数」「⑥ Active listings」「⑦ 広告利用率」を入力してください（URLはコピー文にのみ含めます）
+    ※ Product Research：価格はUSDで検索（JPY入力の場合は為替でUSDへ変換して検索）<br>
+    ※ Advanced Research：価格はJPYで検索（USD入力の場合は為替でJPYへ変換して検索）/ 期間は固定でOK
   </div>
 </div>
 
@@ -140,166 +127,227 @@
 
   <div id="copyArea" style="display:none;">
     <label style="margin-top:14px;">判定結果（コピー用）</label>
-    <textarea id="resultText" rows="15" readonly></textarea>
+    <textarea id="resultText" rows="16" readonly></textarea>
     <button class="btn-copy" onclick="copyResult()">判定結果をコピー</button>
     <div id="copyMsg" class="small"></div>
   </div>
 </div>
 
 <script>
-  function ymd(d = new Date()) {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
+  function ymd(d=new Date()){
+    const yyyy=d.getFullYear();
+    const mm=String(d.getMonth()+1).padStart(2,"0");
+    const dd=String(d.getDate()).padStart(2,"0");
     return `${yyyy}-${mm}-${dd}`;
   }
+  function fmtInt(n){ if(!isFinite(n)) return "0"; return Math.round(n).toString(); }
+  function fmtMoneyUsd(n){ if(!isFinite(n)) return "$0"; return "$"+Math.round(n).toLocaleString("en-US"); }
+  function fmtMoneyJpy(n){ if(!isFinite(n)) return "¥0"; return "¥"+Math.round(n).toLocaleString("ja-JP"); }
+  function fmtMonths(n){
+    if(!isFinite(n)) return "∞";
+    const r=Math.round(n*10)/10;
+    return (Math.abs(r-Math.round(r))<1e-9) ? String(Math.round(r)) : String(r);
+  }
+  function conditionIdFromSelect(v){ return v==="NEW" ? "1000" : "3000"; }
+  function conditionTextFromSelect(v){ return v==="NEW" ? "New" : "Used"; }
 
-  function fmtInt(n) {
-    if (!isFinite(n)) return "0";
-    return Math.round(n).toString();
+  function getFx(){
+    const fx = Number(document.getElementById("fx").value);
+    return (isFinite(fx) && fx > 0) ? fx : 150;
   }
 
-  function fmtMoney(n) {
-    if (!isFinite(n)) return "$0";
-    return "$" + Math.round(n).toLocaleString("en-US");
+  // 中心値を「USD / JPY」どちらからでも確定させる（どちらか片方は必須）
+  function resolveCenterPrices(){
+    const fx = getFx();
+    const usdRaw = document.getElementById("priceUsd").value;
+    const jpyRaw = document.getElementById("priceJpy").value;
+
+    const usd = usdRaw !== "" ? Number(usdRaw) : null;
+    const jpy = jpyRaw !== "" ? Number(jpyRaw) : null;
+
+    if (usd != null && isFinite(usd) && usd > 0) {
+      return { usdCenter: usd, jpyCenter: usd * fx, source: "USD", fx };
+    }
+    if (jpy != null && isFinite(jpy) && jpy > 0) {
+      return { usdCenter: jpy / fx, jpyCenter: jpy, source: "JPY", fx };
+    }
+    return null;
   }
 
-  function fmtMonths(n) {
-    if (!isFinite(n)) return "∞";
-    const r = Math.round(n * 10) / 10;
-    return (Math.abs(r - Math.round(r)) < 1e-9) ? String(Math.round(r)) : String(r);
+  function calcMinMax(center, rangePct){
+    const min = Math.max(0, Math.floor(center * (1 - rangePct/100)));
+    const max = Math.ceil(center * (1 + rangePct/100));
+    return {min, max};
   }
 
-  function conditionIdFromSelect(v) {
-    // eBay conditionId (一般的な共通ID)
-    // New: 1000, Used: 3000
-    return v === "NEW" ? "1000" : "3000";
-  }
-
-  function buildProductResearchUrl({keyword, minPrice, maxPrice, dayRange, conditionId}) {
-    const endDate = Date.now(); // ms
+  // Product Research（USDで検索）
+  function buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId}){
+    const endDate = Date.now();
     const startDate = endDate - (Number(dayRange) * 24 * 60 * 60 * 1000);
 
     const params = new URLSearchParams({
-      marketplace: "EBAY-US",
+      marketplace:"EBAY-US",
       keywords: keyword,
       dayRange: String(dayRange),
       endDate: String(endDate),
       startDate: String(startDate),
-      categoryId: "0",
-      minPrice: String(minPrice),
-      maxPrice: String(maxPrice),
-      offset: "0",
-      limit: "50",
-      sorting: "-avgsalesprice",
-      tabName: "SOLD",
-      tz: "Asia/Tokyo"
+      categoryId:"0",
+      minPrice: String(minUsd),
+      maxPrice: String(maxUsd),
+      offset:"0",
+      limit:"50",
+      sorting:"-avgsalesprice",
+      tabName:"SOLD",
+      tz:"Asia/Tokyo"
     });
-
-    // 状態フィルタ（Product Researchに渡す）
-    // ※ eBay側仕様変更の可能性はあるが、URLに含めても無害で、現状のUI挙動に沿う
     if (conditionId) params.set("conditionId", conditionId);
-
     return `https://www.ebay.com/sh/research?${params.toString()}`;
   }
 
-  function openProductResearch() {
+  // Advanced Research（JPYで検索）※指定の例URL構造に合わせる
+  function buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId}){
+    const params = new URLSearchParams({
+      _nkw: keyword,
+      _sacat: "0",
+      _from: "R40",
+      _sop: "16",              // 例に合わせて
+      LH_ItemCondition: String(conditionId || "3000"),
+      LH_Sold: "1",
+      rt: "nc",
+      _udlo: String(minJpy),
+      _udhi: String(maxJpy)
+    });
+    return `https://www.ebay.com/sch/i.html?${params.toString()}`;
+  }
+
+  function openProductResearch(){
     const keyword = document.getElementById("keyword").value.trim();
-    const price = Number(document.getElementById("price").value);
-    const range = Number(document.getElementById("range").value);
+    const condSel = document.getElementById("condition").value;
+    const conditionId = conditionIdFromSelect(condSel);
     const dayRange = Number(document.getElementById("dayRange").value);
-    const conditionSel = document.getElementById("condition").value;
-    const conditionId = conditionIdFromSelect(conditionSel);
+    const rangePct = Number(document.getElementById("range").value);
 
-    if (!keyword) { alert("① キーワードを入力してください"); return; }
-    if (!price || price <= 0) { alert("売れ筋の価格（中心値）を入力してください"); return; }
+    if(!keyword){ alert("① キーワードを入力してください"); return; }
 
-    const minPrice = Math.max(0, Math.floor(price * (1 - range / 100)));
-    const maxPrice = Math.ceil(price * (1 + range / 100));
+    const prices = resolveCenterPrices();
+    if(!prices){ alert("売れ筋の価格（中心値）を USD か JPY のどちらかで入力してください"); return; }
 
-    const url = buildProductResearchUrl({ keyword, minPrice, maxPrice, dayRange, conditionId });
+    const {min:minUsd, max:maxUsd} = calcMinMax(prices.usdCenter, rangePct);
 
-    // 判定時に使うため保持
-    window.__lastResearchUrl = url;
-    window.__lastMinPrice = minPrice;
-    window.__lastMaxPrice = maxPrice;
-    window.__lastConditionText = (conditionSel === "NEW") ? "New" : "Used";
+    const url = buildProductResearchUrl({
+      keyword,
+      minUsd,
+      maxUsd,
+      dayRange,
+      conditionId
+    });
+
+    window.__lastProductUrl = url;
+    window.__lastMinUsd = minUsd;
+    window.__lastMaxUsd = maxUsd;
+    window.__lastConditionText = conditionTextFromSelect(condSel);
     window.__lastConditionId = conditionId;
+    window.__lastDayRange = dayRange;
+    window.__lastRangePct = rangePct;
+    window.__lastFx = prices.fx;
 
     window.open(url, "_blank");
   }
 
-  function calculate() {
+  function openAdvancedResearch(){
     const keyword = document.getElementById("keyword").value.trim();
-    const price = Number(document.getElementById("price").value);
-    const range = Number(document.getElementById("range").value);
+    const condSel = document.getElementById("condition").value;
+    const conditionId = conditionIdFromSelect(condSel);
+    const rangePct = Number(document.getElementById("range").value);
+
+    if(!keyword){ alert("① キーワードを入力してください"); return; }
+
+    const prices = resolveCenterPrices();
+    if(!prices){ alert("売れ筋の価格（中心値）を USD か JPY のどちらかで入力してください"); return; }
+
+    // AdvancedはJPYで検索（USD入力ならJPYに変換）
+    const {min:minJpy, max:maxJpy} = calcMinMax(prices.jpyCenter, rangePct);
+
+    const url = buildAdvancedResearchUrl({
+      keyword,
+      minJpy,
+      maxJpy,
+      conditionId
+    });
+
+    window.__lastAdvancedUrl = url;
+    window.__lastMinJpy = minJpy;
+    window.__lastMaxJpy = maxJpy;
+    window.__lastConditionText = conditionTextFromSelect(condSel);
+    window.__lastConditionId = conditionId;
+    window.__lastRangePct = rangePct;
+    window.__lastFx = prices.fx;
+
+    window.open(url, "_blank");
+  }
+
+  function calculate(){
+    const keyword = document.getElementById("keyword").value.trim();
+    const condSel = document.getElementById("condition").value;
+    const conditionText = conditionTextFromSelect(condSel);
+    const conditionId = conditionIdFromSelect(condSel);
     const dayRange = Number(document.getElementById("dayRange").value);
-    const conditionSel = document.getElementById("condition").value;
+    const rangePct = Number(document.getElementById("range").value);
 
     const soldRaw = document.getElementById("sold").value;
     const activeRaw = document.getElementById("active").value;
     const promotedRaw = document.getElementById("promoted").value;
 
-    if (!keyword) { alert("① キーワードを入力してください"); return; }
-    if (!price || price <= 0) { alert("売れ筋の価格（中心値）を入力してください"); return; }
-    if (soldRaw === "" || activeRaw === "") { alert("⑤ Sold数 と ⑥ Active listings を入力してください"); return; }
-
-    const conditionText = window.__lastConditionText || ((conditionSel === "NEW") ? "New" : "Used");
-    const conditionId = window.__lastConditionId || conditionIdFromSelect(conditionSel);
+    if(!keyword){ alert("① キーワードを入力してください"); return; }
+    const prices = resolveCenterPrices();
+    if(!prices){ alert("売れ筋の価格（中心値）を USD か JPY のどちらかで入力してください"); return; }
+    if(soldRaw==="" || activeRaw===""){ alert("⑤ Sold数 と ⑥ Active listings を入力してください"); return; }
 
     const sold = Number(soldRaw);
     const active = Number(activeRaw);
 
-    // 価格レンジ
-    const minPrice = (window.__lastMinPrice != null)
-      ? window.__lastMinPrice
-      : Math.max(0, Math.floor(price * (1 - range / 100)));
+    // 価格レンジ（Product=USD、Advanced=JPY）
+    const mmUsd = calcMinMax(prices.usdCenter, rangePct);
+    const mmJpy = calcMinMax(prices.jpyCenter, rangePct);
 
-    const maxPrice = (window.__lastMaxPrice != null)
-      ? window.__lastMaxPrice
-      : Math.ceil(price * (1 + range / 100));
+    // URL（表示しない、コピー文にだけ）
+    const productUrl = window.__lastProductUrl || buildProductResearchUrl({
+      keyword,
+      minUsd: mmUsd.min,
+      maxUsd: mmUsd.max,
+      dayRange,
+      conditionId
+    });
 
-    // URL（画面表示はしない、コピー文にのみ入れる）
-    const researchUrl = window.__lastResearchUrl
-      ? window.__lastResearchUrl
-      : buildProductResearchUrl({ keyword, minPrice, maxPrice, dayRange, conditionId });
+    const advancedUrl = window.__lastAdvancedUrl || buildAdvancedResearchUrl({
+      keyword,
+      minJpy: mmJpy.min,
+      maxJpy: mmJpy.max,
+      conditionId
+    });
 
-    // 月間Sold数：30日=1か月換算
-    const monthlySold = (dayRange > 0) ? (sold / (dayRange / 30)) : 0;
+    // 月間Sold数（Product Researchの期間から計算）
+    const monthlySold = (dayRange>0) ? (sold / (dayRange/30)) : 0;
 
     // 広告あり出品数（未入力なら null）
     let activeAds = null;
-    if (promotedRaw !== "") {
+    if(promotedRaw!==""){
       const p = Number(promotedRaw);
-      if (isFinite(p) && p >= 0 && p <= 100) {
-        activeAds = active * (p / 100);
+      if(isFinite(p) && p>=0 && p<=100){
+        activeAds = active * (p/100);
       }
     }
 
-    // 計算は「広告あり」があればそれを採用（強いライバル数）
-    const effectiveActive = (activeAds == null) ? active : activeAds;
+    const effectiveActive = (activeAds==null) ? active : activeAds;
 
-    // 回転率：月間Sold / 出品数(effective) * 100
-    const rotationRate = (effectiveActive > 0) ? (monthlySold / effectiveActive * 100) : 0;
+    const rotationRate = (effectiveActive>0) ? (monthlySold/effectiveActive*100) : 0;
+    const inventoryMonths = (monthlySold>0) ? (effectiveActive/monthlySold) : Infinity;
 
-    // 在庫期間（月）：出品数(effective) / 月間Sold
-    const inventoryMonths = (monthlySold > 0) ? (effectiveActive / monthlySold) : Infinity;
+    let judge="", cls="";
+    if(inventoryMonths<=1.5){ judge="🔥 HOT：回転が非常に良い（狙い目）"; cls="hot"; }
+    else if(inventoryMonths<=4){ judge="🌤 WARM：条件次第でOK（価格・状態勝負）"; cls="warm"; }
+    else { judge="❄ COLD：寝る可能性が高い"; cls="cold"; }
 
-    // 判定（在庫期間ベース）
-    let judge = "";
-    let cls = "";
-    if (inventoryMonths <= 1.5) {
-      judge = "🔥 HOT：回転が非常に良い（狙い目）";
-      cls = "hot";
-    } else if (inventoryMonths <= 4) {
-      judge = "🌤 WARM：条件次第でOK（価格・状態勝負）";
-      cls = "warm";
-    } else {
-      judge = "❄ COLD：寝る可能性が高い";
-      cls = "cold";
-    }
-
-    // 表示用（判定結果だけ太字）
     const monthlySoldInt = fmtInt(monthlySold);
     const rotationInt = fmtInt(rotationRate);
     const inventoryTxt = fmtMonths(inventoryMonths);
@@ -307,38 +355,37 @@
     const lineSold = `指定期間Sold数：${fmtInt(sold)}（${dayRange}日）`;
     const lineMonthly = `月間Sold数：${monthlySoldInt}個 / 月`;
     const lineActiveNoAds = `現在出品数：${fmtInt(active)}個（広告なし）`;
-    const lineActiveAds = (activeAds == null)
-      ? null
-      : `現在出品数：${fmtInt(activeAds)}個（広告あり）`;
+    const lineActiveAds = (activeAds==null) ? null : `現在出品数：${fmtInt(activeAds)}個（広告あり）`;
     const lineRotation = `回転率：${rotationInt}% / 月`;
     const lineInventory = `在庫期間：${inventoryTxt}ヵ月`;
 
     let html = `<div class="result">${lineSold}<br>${lineMonthly}<br>${lineActiveNoAds}`;
-    if (lineActiveAds) html += `<br>${lineActiveAds}`;
+    if(lineActiveAds) html += `<br>${lineActiveAds}`;
     html += `<br>${lineRotation}<br>${lineInventory}</div>`;
     html += `<div class="result"><span style="font-weight:900;">判定結果：</span><span class="${cls}" style="font-weight:900;">${judge}</span></div>`;
-
     document.getElementById("output").innerHTML = html;
 
-    // コピー文（キーワードの下に状態を入れる）
+    // コピー文（空行なし、日付は最後、URLは2本）
     const today = ymd(new Date());
-    const lines = [];
+    const fx = prices.fx;
+
+    const lines=[];
     lines.push("eBay Hot Items Checker");
     lines.push(`■キーワード：${keyword}`);
     lines.push(`状態：${conditionText}`);
-    lines.push(`売れ筋の価格（中心値）：${fmtMoney(price)}`);
-    lines.push(`売れ筋の価格レンジ：±${range}%（${fmtMoney(minPrice)} - ${fmtMoney(maxPrice)}）`);
+    lines.push(`売れ筋の価格（中心値）：${fmtMoneyUsd(prices.usdCenter)} / ${fmtMoneyJpy(prices.jpyCenter)}`);
+    lines.push(`売れ筋の価格レンジ：±${rangePct}%（${fmtMoneyUsd(mmUsd.min)} - ${fmtMoneyUsd(mmUsd.max)} / ${fmtMoneyJpy(mmJpy.min)} - ${fmtMoneyJpy(mmJpy.max)}）`);
+    lines.push(`為替：1 USD = ${fx} JPY`);
     lines.push(`期間：${dayRange}日`);
     lines.push(`Sold：${fmtInt(sold)}個`);
     lines.push(`月換算 Sold：${monthlySoldInt}個 / 月`);
     lines.push(`Active listings：${fmtInt(active)}個（広告なし）`);
-    if (activeAds != null) {
-      lines.push(`Active listings：${fmtInt(activeAds)}個（広告あり）`);
-    }
+    if(activeAds!=null) lines.push(`Active listings：${fmtInt(activeAds)}個（広告あり）`);
     lines.push(`回転率：${rotationInt}% / 月`);
     lines.push(`在庫期間：${inventoryTxt}ヵ月`);
     lines.push(`判定結果：${judge}`);
-    lines.push(`Product Research URL：${researchUrl}`);
+    lines.push(`Product Research URL：${productUrl}`);
+    lines.push(`Advanced Research URL：${advancedUrl}`);
     lines.push(`日付：${today}`);
 
     document.getElementById("resultText").value = lines.join("\n");
@@ -346,17 +393,15 @@
     document.getElementById("copyMsg").textContent = "";
   }
 
-  async function copyResult() {
-    const txt = document.getElementById("resultText").value;
-    try {
+  async function copyResult(){
+    const txt=document.getElementById("resultText").value;
+    try{
       await navigator.clipboard.writeText(txt);
-      document.getElementById("copyMsg").textContent = "コピーしました ✅";
-    } catch (e) {
-      const ta = document.getElementById("resultText");
-      ta.focus();
-      ta.select();
-      document.getElementById("copyMsg").textContent =
-        "クリップボードに直接コピーできないため、選択状態にしました（Ctrl+Cでコピーしてください）";
+      document.getElementById("copyMsg").textContent="コピーしました ✅";
+    }catch(e){
+      const ta=document.getElementById("resultText");
+      ta.focus(); ta.select();
+      document.getElementById("copyMsg").textContent="直接コピーできないため選択状態にしました（Ctrl+Cでコピーしてください）";
     }
   }
 </script>
