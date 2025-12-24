@@ -12,16 +12,20 @@
     h1{ font-size:1.4rem; margin:0 0 10px; }
     .card{ border:1px solid #ddd; border-radius:10px; padding:16px; margin-bottom:16px; }
     label{ display:block; margin-top:10px; font-weight:800; }
+
     input,select,textarea{
       width:100%; padding:10px; margin-top:6px; font-size:1rem;
       border-radius:8px; border:1px solid #ccc; box-sizing:border-box;
     }
+
     button{
-      margin-top:14px; padding:10px; width:100%;
+      padding:10px;
       font-size:1rem; border-radius:8px; border:none; cursor:pointer;
     }
     .btn-secondary{ background:#eee; }
-    .btn-copy{ background:#444; color:#fff; }
+    .btn-copy{ background:#444; color:#fff; width:100%; margin-top:10px; }
+    .btn-clear{ background:#f1f3f4; color:#333; padding:8px 10px; font-size:.95rem; }
+
     .small{ font-size:.95rem; color:#555; margin-top:10px; }
     .result{ font-size:1.05rem; margin-top:10px; }
 
@@ -39,11 +43,7 @@
       text-decoration: underline;
       font-weight: 700;
     }
-    .linksWrap{
-      margin-top: 12px;
-      display: grid;
-      gap: 8px;
-    }
+    .linksWrap{ margin-top: 12px; display: grid; gap: 8px; }
     .linkRow{
       display:flex;
       gap:10px;
@@ -57,8 +57,25 @@
       background:#f1f3f4;
       color:#444;
       font-size:.85rem;
+      font-weight:700;
     }
     .muted{ color:#666; font-size:.9rem; }
+
+    .labelRow{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .labelRow label{ margin-top:0; }
+    .kwWrap{ margin-top:10px; }
+
+    .actionsRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-top:10px;
+    }
   </style>
 </head>
 <body>
@@ -66,8 +83,14 @@
 <h1>🔥 eBay Hot Items Checker</h1>
 
 <div class="card">
-  <label>型番 / キーワード</label>
-  <input id="keyword" type="text" placeholder="例：Nikon 50mm F/1.4 Ai-s">
+
+  <div class="labelRow">
+    <label>型番 / キーワード</label>
+    <button class="btn-clear" type="button" onclick="clearInputs()">クリア</button>
+  </div>
+  <div class="kwWrap">
+    <input id="keyword" type="text" placeholder="例：Nikon 50mm F/1.4 Ai-s">
+  </div>
 
   <div class="row2">
     <div>
@@ -87,21 +110,26 @@
     </div>
   </div>
 
+  <!-- JPY 左 / USD 右 -->
   <div class="row2">
-    <div>
-      <label>USD：売れ筋の価格（中心値）</label>
-      <input id="priceUsd" type="number" inputmode="decimal" placeholder="例：100（未入力OK）">
-    </div>
     <div>
       <label>JPY：売れ筋の価格（中心値）</label>
       <input id="priceJpy" type="number" inputmode="numeric" placeholder="例：15000（未入力OK）">
     </div>
+    <div>
+      <label>USD：売れ筋の価格（中心値）</label>
+      <input id="priceUsd" type="number" inputmode="decimal" placeholder="例：100（未入力OK）">
+    </div>
   </div>
 
-  <div class="row2">
+  <!-- Location / レンジ / 為替（為替は最後） -->
+  <div class="row3">
     <div>
-      <label>為替レート（1 USD = JPY）</label>
-      <input id="fx" type="number" inputmode="decimal" placeholder="例：150" value="150">
+      <label>Location</label>
+      <select id="location">
+        <option value="JP" selected>Japan</option>
+        <option value="ALL">All</option>
+      </select>
     </div>
     <div>
       <label>売れ筋の価格レンジ（±%）</label>
@@ -114,17 +142,21 @@
         <option value="25">±25%</option>
       </select>
     </div>
+    <div>
+      <label>為替レート（1 USD = JPY）</label>
+      <input id="fx" type="number" inputmode="decimal" placeholder="例：150" value="150">
+    </div>
   </div>
 
   <div class="linksWrap">
     <div class="linkRow">
       <span class="pill">SOLD</span>
-      <a id="prLink" class="linkish" href="#" onclick="return false;">Product Research（Sold）で見る</a>
+      <a id="prLink" class="linkish" href="#" target="_blank" rel="noopener noreferrer" onclick="return false;">Product Research で見る</a>
       <span class="muted" id="prHint"></span>
     </div>
     <div class="linkRow">
       <span class="pill">SOLD</span>
-      <a id="arLink" class="linkish" href="#" onclick="return false;">Advanced Research（Sold）で見る</a>
+      <a id="arLink" class="linkish" href="#" target="_blank" rel="noopener noreferrer" onclick="return false;">Advanced Research で見る</a>
       <span class="muted" id="arHint"></span>
     </div>
   </div>
@@ -150,14 +182,16 @@
     </div>
   </div>
 
-  <button class="btn-secondary" onclick="calculate()">判定する</button>
+  <div class="actionsRow">
+    <button class="btn-secondary" type="button" onclick="calculate()" style="flex:1;">判定する</button>
+  </div>
 
   <div id="output"></div>
 
   <div id="copyArea" style="display:none;">
     <label style="margin-top:14px;">判定結果（コピー用）</label>
-    <textarea id="resultText" rows="16" readonly></textarea>
-    <button class="btn-copy" onclick="copyResult()">判定結果をコピー</button>
+    <textarea id="resultText" rows="18" readonly></textarea>
+    <button class="btn-copy" type="button" onclick="copyResult()">判定結果をコピー</button>
     <div id="copyMsg" class="small"></div>
   </div>
 </div>
@@ -177,6 +211,7 @@
     const r=Math.round(n*10)/10;
     return (Math.abs(r-Math.round(r))<1e-9) ? String(Math.round(r)) : String(r);
   }
+  function clamp(n, min, max){ return Math.min(max, Math.max(min, n)); }
   function conditionIdFromSelect(v){ return v==="NEW" ? "1000" : "3000"; }
   function conditionTextFromSelect(v){ return v==="NEW" ? "New" : "Used"; }
 
@@ -193,11 +228,11 @@
     const usd = usdRaw !== "" ? Number(usdRaw) : null;
     const jpy = jpyRaw !== "" ? Number(jpyRaw) : null;
 
-    if (usd != null && isFinite(usd) && usd > 0) {
-      return { usdCenter: usd, jpyCenter: usd * fx, source: "USD", fx };
-    }
     if (jpy != null && isFinite(jpy) && jpy > 0) {
       return { usdCenter: jpy / fx, jpyCenter: jpy, source: "JPY", fx };
+    }
+    if (usd != null && isFinite(usd) && usd > 0) {
+      return { usdCenter: usd, jpyCenter: usd * fx, source: "USD", fx };
     }
     return null;
   }
@@ -209,7 +244,8 @@
   }
 
   // Product Research：sorting=-avgsalesprice（高い順）
-  function buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId}){
+  // Location=Japan のとき sellerCountry=SellerLocation:::JP を付与
+  function buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId, location}){
     const endDate = Date.now();
     const startDate = endDate - (Number(dayRange) * 24 * 60 * 60 * 1000);
 
@@ -227,29 +263,42 @@
       tz:"Asia/Tokyo"
     });
 
+    if (conditionId) params.set("conditionId", conditionId);
+
     if (minUsd != null && maxUsd != null) {
       params.set("minPrice", String(minUsd));
       params.set("maxPrice", String(maxUsd));
     }
-    if (conditionId) params.set("conditionId", conditionId);
+
+    if (location === "JP") {
+      // 例：sellerCountry=SellerLocation:::JP（URLSearchParamsで %3A%3A%3A にエンコードされる）
+      params.set("sellerCountry", "SellerLocation:::JP");
+    }
 
     return `https://www.ebay.com/sh/research?${params.toString()}`;
   }
 
   // Advanced Research：_sop=16（高い順）
-  function buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId}){
+  // Location=Japan のとき _salic=104&LH_LocatedIn=1 を付与
+  function buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId, location}){
     const params = new URLSearchParams({
       _nkw: keyword,
       _sacat: "0",
-      _from: "R40",
+      LH_Complete: "1",
       LH_Sold: "1",
       _sop: "16"
     });
 
     if (conditionId) params.set("LH_ItemCondition", String(conditionId));
+
     if (minJpy != null && maxJpy != null) {
       params.set("_udlo", String(minJpy));
       params.set("_udhi", String(maxJpy));
+    }
+
+    if (location === "JP") {
+      params.set("_salic", "104");
+      params.set("LH_LocatedIn", "1");
     }
 
     return `https://www.ebay.com/sch/i.html?${params.toString()}`;
@@ -257,16 +306,20 @@
 
   function setLink(el, url){
     el.href = url;
-    // スマホでの挙動安定を優先：同一タブで開く（targetを付けない）
-    el.onclick = () => true; // 通常遷移
+    // 新しいタブで開く
+    el.target = "_blank";
+    el.rel = "noopener noreferrer";
+    el.onclick = () => true;
   }
 
   function updateLinks(){
     const keyword = document.getElementById("keyword").value.trim();
     const condSel = document.getElementById("condition").value;
     const conditionId = conditionIdFromSelect(condSel);
+    const conditionText = conditionTextFromSelect(condSel);
     const dayRange = Number(document.getElementById("dayRange").value);
     const rangePct = Number(document.getElementById("range").value);
+    const location = document.getElementById("location").value;
 
     const prLink = document.getElementById("prLink");
     const arLink = document.getElementById("arLink");
@@ -282,7 +335,6 @@
       return;
     }
 
-    // 中心値が未入力でもリンク生成はOK（価格レンジは付けない）
     const prices = resolveCenterPrices();
     let minUsd=null, maxUsd=null, minJpy=null, maxJpy=null;
 
@@ -293,21 +345,32 @@
       const mmJpy = calcMinMax(prices.jpyCenter, rangePct);
       minJpy=mmJpy.min; maxJpy=mmJpy.max;
 
-      prHint.textContent = `（${fmtMoneyUsd(minUsd)} - ${fmtMoneyUsd(maxUsd)} / ${dayRange}日 / ${conditionTextFromSelect(condSel)}）`;
-      arHint.textContent = `（${fmtMoneyJpy(minJpy)} - ${fmtMoneyJpy(maxJpy)} / ${conditionTextFromSelect(condSel)}）`;
+      prHint.textContent = `（${fmtMoneyUsd(minUsd)} - ${fmtMoneyUsd(maxUsd)} / ${dayRange}日 / ${conditionText}${location==="JP" ? " / Japan" : ""}）`;
+      arHint.textContent = `（${fmtMoneyJpy(minJpy)} - ${fmtMoneyJpy(maxJpy)} / 90日固定 / ${conditionText}${location==="JP" ? " / Japan" : ""}）`;
     } else {
-      prHint.textContent = `（${dayRange}日 / ${conditionTextFromSelect(condSel)}）`;
-      arHint.textContent = `（${conditionTextFromSelect(condSel)}）`;
+      prHint.textContent = `（${dayRange}日 / ${conditionText}${location==="JP" ? " / Japan" : ""}）`;
+      arHint.textContent = `（90日固定 / ${conditionText}${location==="JP" ? " / Japan" : ""}）`;
     }
 
-    const prUrl = buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId});
-    const arUrl = buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId});
+    const prUrl = buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId, location});
+    const arUrl = buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId, location});
 
     window.__lastProductUrl = prUrl;
     window.__lastAdvancedUrl = arUrl;
 
     setLink(prLink, prUrl);
     setLink(arLink, arUrl);
+  }
+
+  function calcListingsSplit(activeTotal, promotedPct){
+    // promotedPct が null の場合は split しない
+    if (promotedPct == null) {
+      return { noAds: activeTotal, ads: null };
+    }
+    const p = clamp(promotedPct, 0, 100);
+    const ads = Math.round(activeTotal * (p/100));
+    const noAds = Math.max(0, activeTotal - ads);
+    return { noAds, ads, pct:p };
   }
 
   function calculate(){
@@ -317,6 +380,7 @@
     const conditionId = conditionIdFromSelect(condSel);
     const dayRange = Number(document.getElementById("dayRange").value);
     const rangePct = Number(document.getElementById("range").value);
+    const location = document.getElementById("location").value;
 
     const soldRaw = document.getElementById("sold").value;
     const activeRaw = document.getElementById("active").value;
@@ -344,27 +408,25 @@
       minUsd: mmUsd ? mmUsd.min : null,
       maxUsd: mmUsd ? mmUsd.max : null,
       dayRange,
-      conditionId
+      conditionId,
+      location
     });
 
     const advancedUrl = window.__lastAdvancedUrl || buildAdvancedResearchUrl({
       keyword,
       minJpy: mmJpy ? mmJpy.min : null,
       maxJpy: mmJpy ? mmJpy.max : null,
-      conditionId
+      conditionId,
+      location
     });
 
     const monthlySold = (dayRange>0) ? (sold / (dayRange/30)) : 0;
 
-    let activeAds = null;
-    if(promotedRaw!==""){
-      const p = Number(promotedRaw);
-      if(isFinite(p) && p>=0 && p<=100){
-        activeAds = active * (p/100);
-      }
-    }
+    const promotedPct = (promotedRaw !== "") ? Number(promotedRaw) : null;
+    const split = calcListingsSplit(active, (promotedRaw !== "" && isFinite(promotedPct)) ? promotedPct : null);
 
-    const effectiveActive = (activeAds==null) ? active : activeAds;
+    // 回転率＆在庫期間は「広告あり出品数」があるならそれを分母にする（未入力なら総出品数）
+    const effectiveActive = (split.ads == null) ? split.noAds : Math.max(1e-9, split.ads);
     const rotationRate = (effectiveActive>0) ? (monthlySold/effectiveActive*100) : 0;
     const inventoryMonths = (monthlySold>0) ? (effectiveActive/monthlySold) : Infinity;
 
@@ -386,46 +448,60 @@
 
     const lineSold = `指定期間Sold数：${fmtInt(sold)}（${dayRange}日）`;
     const lineMonthly = `月間Sold数：${monthlySoldInt}個 / 月`;
-    const lineActiveNoAds = `現在出品数：${fmtInt(active)}個（広告なし）`;
-    const lineActiveAds = (activeAds==null) ? null : `現在出品数：${fmtInt(activeAds)}個（広告あり）`;
+
+    const linesActiveUI = [];
+    if (split.ads == null) {
+      linesActiveUI.push(`Active listings：${fmtInt(split.noAds)}個（広告なし）`);
+    } else {
+      linesActiveUI.push(`Active listings：${fmtInt(split.noAds)}個（広告なし）`);
+      linesActiveUI.push(`Active listings：${fmtInt(split.ads)}個（広告あり）`);
+      linesActiveUI.push(`広告利用率：${fmtInt(split.pct)}％`);
+    }
+
     const lineRotation = `回転率：${rotationInt}% / 月`;
     const lineInventory = `在庫期間：${inventoryTxt}ヵ月`;
 
-    let html = `<div class="result">${lineSold}<br>${lineMonthly}<br>${lineActiveNoAds}`;
-    if(lineActiveAds) html += `<br>${lineActiveAds}`;
-    html += `<br>${lineRotation}<br>${lineInventory}</div>`;
+    let html = `<div class="result">${lineSold}<br>${lineMonthly}<br>${linesActiveUI.join("<br>")}<br>${lineRotation}<br>${lineInventory}</div>`;
     html += `<div class="result"><span style="font-weight:900;">判定結果：</span><span class="${cls}" style="font-weight:900;">${judge}</span></div>`;
     document.getElementById("output").innerHTML = html;
 
     const today = ymd(new Date());
-    const lines=[];
-    lines.push("eBay Hot Items Checker");
-    lines.push(`■キーワード：${keyword}`);
-    lines.push(`状態：${conditionText}`);
+    const out=[];
+    out.push("eBay Hot Items Checker");
+    out.push(`■キーワード：${keyword}`);
+    out.push(`状態：${conditionText}`);
 
     if (usdCenter != null && jpyCenter != null && mmUsd && mmJpy) {
-      lines.push(`売れ筋の価格（中心値）：${fmtMoneyUsd(usdCenter)} / ${fmtMoneyJpy(jpyCenter)}`);
-      lines.push(`売れ筋の価格レンジ：±${rangePct}%（${fmtMoneyUsd(mmUsd.min)} - ${fmtMoneyUsd(mmUsd.max)} / ${fmtMoneyJpy(mmJpy.min)} - ${fmtMoneyJpy(mmJpy.max)}）`);
-      lines.push(`為替：1 USD = ${fx} JPY`);
+      out.push(`売れ筋の価格（中心値）：${fmtMoneyUsd(usdCenter)} / ${fmtMoneyJpy(jpyCenter)}`);
+      out.push(`売れ筋の価格レンジ：±${rangePct}%（${fmtMoneyUsd(mmUsd.min)} - ${fmtMoneyUsd(mmUsd.max)} / ${fmtMoneyJpy(mmJpy.min)} - ${fmtMoneyJpy(mmJpy.max)}）`);
+      out.push(`為替：1 USD = ${fx} JPY`);
     } else {
-      lines.push(`売れ筋の価格（中心値）：`);
-      lines.push(`売れ筋の価格レンジ：±${rangePct}%（）`);
-      lines.push(`為替：1 USD = ${fx} JPY`);
+      out.push(`売れ筋の価格（中心値）：`);
+      out.push(`売れ筋の価格レンジ：±${rangePct}%（）`);
+      out.push(`為替：1 USD = ${fx} JPY`);
     }
 
-    lines.push(`期間：${dayRange}日`);
-    lines.push(`Sold：${fmtInt(sold)}個`);
-    lines.push(`月換算 Sold：${monthlySoldInt}個 / 月`);
-    lines.push(`Active listings：${fmtInt(active)}個（広告なし）`);
-    if(activeAds!=null) lines.push(`Active listings：${fmtInt(activeAds)}個（広告あり）`);
-    lines.push(`回転率：${rotationInt}% / 月`);
-    lines.push(`在庫期間：${inventoryTxt}ヵ月`);
-    lines.push(`判定結果：${judge}`);
-    lines.push(`Product Research URL：${productUrl}`);
-    lines.push(`Advanced Research URL：${advancedUrl}`);
-    lines.push(`日付：${today}`);
+    out.push(`期間：${dayRange}日`);
+    out.push(`Sold：${fmtInt(sold)}個`);
+    out.push(`月換算 Sold：${monthlySoldInt}個 / 月`);
+    if (split.ads == null) {
+      out.push(`Active listings：${fmtInt(split.noAds)}個（広告なし）`);
+    } else {
+      out.push(`Active listings：${fmtInt(split.noAds)}個（広告なし）`);
+      out.push(`Active listings：${fmtInt(split.ads)}個（広告あり）`);
+      out.push(`広告利用率：${fmtInt(split.pct)}％`);
+    }
 
-    document.getElementById("resultText").value = lines.join("\n");
+    out.push("");
+    out.push(`回転率：${rotationInt}% / 月`);
+    out.push(`在庫期間：${inventoryTxt}ヵ月`);
+    out.push("");
+    out.push(`判定結果：${judge}`);
+    out.push(`Product Research URL：${productUrl}`);
+    out.push(`Advanced Research URL：${advancedUrl}`);
+    out.push(`日付：${today}`);
+
+    document.getElementById("resultText").value = out.join("\n");
     document.getElementById("copyArea").style.display = "block";
     document.getElementById("copyMsg").textContent = "";
   }
@@ -442,9 +518,26 @@
     }
   }
 
-  // 入力変更でリンクを即更新
-  ["keyword","condition","dayRange","priceUsd","priceJpy","fx","range"].forEach(id=>{
-    document.addEventListener("DOMContentLoaded", ()=>{});
+  function closeResults(){
+    document.getElementById("output").innerHTML = "";
+    document.getElementById("copyArea").style.display = "none";
+    document.getElementById("resultText").value = "";
+    document.getElementById("copyMsg").textContent = "";
+  }
+
+  function clearInputs(){
+    document.getElementById("keyword").value = "";
+    document.getElementById("priceUsd").value = "";
+    document.getElementById("priceJpy").value = "";
+    document.getElementById("sold").value = "";
+    document.getElementById("active").value = "";
+    document.getElementById("promoted").value = "";
+    closeResults();
+    updateLinks();
+  }
+
+  // 入力変更でリンクを即更新（クリア対象以外も含めて）
+  ["keyword","condition","dayRange","priceUsd","priceJpy","location","range","fx"].forEach(id=>{
     const el = document.getElementById(id);
     el.addEventListener("input", updateLinks);
     el.addEventListener("change", updateLinks);
