@@ -92,7 +92,19 @@
 
     <div style="margin-top: 12px;">
       <label for="keyword"><strong>型番（ベースキーワード）</strong></label>
-      <input type="text" id="keyword" placeholder="例：Nikon D750 50mm f1.8 など">
+
+      <!-- ★ 入力欄＋クリアボタン（横並び） -->
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input type="text" id="keyword" placeholder="例：Nikon D750 50mm f1.8 など" style="flex:1;">
+        <button
+          type="button"
+          id="clearKeywordBtn"
+          style="background:#6b7280; color:#fff; margin-top:0; white-space:nowrap;"
+          aria-label="キーワードをクリア"
+        >
+          クリア
+        </button>
+      </div>
     </div>
 
     <div style="margin-top: 12px;">
@@ -173,6 +185,22 @@
 
         // iPhone / iPad → Googleアプリ起動を試す
         window.location.href = "google://";
+      });
+    }
+
+    // ★ クリアボタン：キーワードを空にして結果も消す
+    const clearKeywordBtn = document.getElementById("clearKeywordBtn");
+    if (clearKeywordBtn) {
+      clearKeywordBtn.addEventListener("click", () => {
+        const keywordInput = document.getElementById("keyword");
+        keywordInput.value = "";
+        keywordInput.focus();
+
+        // 結果表示を消す（前のリンクが残ると混乱するため）
+        const resultDiv = document.getElementById("result");
+        const resultLinks = document.getElementById("resultLinks");
+        resultDiv.style.display = "none";
+        resultLinks.innerHTML = "";
       });
     }
 
