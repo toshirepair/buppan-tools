@@ -43,10 +43,6 @@
       color: #fff;
       margin-top: 12px;
     }
-    button:disabled {
-      background: #9ca3af;
-      cursor: default;
-    }
     .small {
       font-size: 0.85rem;
       color: #555;
@@ -54,583 +50,136 @@
     ul.result-list {
       list-style: none;
       padding-left: 0;
-      margin: 0;
       margin-top: 8px;
     }
-    ul.result-list li {
-      margin-bottom: 10px;
-    }
     a.result-link {
-      font-size: 0.95rem;
-      text-decoration: underline;
       color: #2563eb;
+      text-decoration: underline;
     }
     textarea.copy-area {
       width: 100%;
       min-height: 120px;
-      box-sizing: border-box;
       font-size: 0.85rem;
       margin-top: 8px;
       white-space: pre-wrap;
     }
   </style>
 </head>
+
 <body>
-  <h1>マルチサイト一括リサーチツール</h1>
+<h1>マルチサイト一括リサーチツール</h1>
 
-  <div class="card">
-    <!-- ★ Googleレンズボタン（キーワードの上） -->
-    <div>
-      <button
-        type="button"
-        id="openGoogleLensBtn"
-        style="background:#6b7280; color:#fff; padding:10px 18px; border-radius:6px; border:none; cursor:pointer;"
-      >
-        Googleレンズを開く
-      </button>
-    </div>
-
-    <div style="margin-top: 12px;">
-      <label for="keyword"><strong>型番（ベースキーワード）</strong></label>
-
-      <!-- ★ 入力欄＋クリアボタン（横並び） -->
-      <div style="display:flex; gap:8px; align-items:center;">
-        <input type="text" id="keyword" placeholder="例：Nikon D750 50mm f1.8 など" style="flex:1;">
-        <button
-          type="button"
-          id="clearKeywordBtn"
-          style="background:#6b7280; color:#fff; margin-top:0; white-space:nowrap;"
-          aria-label="キーワードをクリア"
-        >
-          クリア
-        </button>
-      </div>
-    </div>
-
-    <div style="margin-top: 12px;">
-      <div><strong>状態（ヤフオク・メルカリ・ラクマ・eBay に反映）</strong></div>
-      <label><input type="checkbox" id="cond_new"> 新品</label>
-      <label><input type="checkbox" id="cond_mint" checked> 美品</label>
-      <label><input type="checkbox" id="cond_exc"> 並品</label>
-      <label><input type="checkbox" id="cond_read"> 訳あり</label>
-      <label><input type="checkbox" id="cond_now"> 現状</label>
-      <label><input type="checkbox" id="cond_asis"> ジャンク</label>
-
-      <!-- ★ 付属品・特徴 -->
-      <div style="margin-top: 10px;"><strong>付属品・特徴</strong></div>
-      <label><input type="checkbox" id="feat_box"> 箱付き</label>
-      <label><input type="checkbox" id="feat_hood"> フード付き</label>
-      <label><input type="checkbox" id="feat_early"> 初期</label>
-      <label><input type="checkbox" id="feat_pre"> 前期</label>
-      <label><input type="checkbox" id="feat_post"> 後期</label>
-    </div>
-
-    <div style="margin-top: 12px;">
-      <div><strong>検索するサイト</strong></div>
-      <!-- 1行目：eBay 3種 -->
-      <label><input type="checkbox" id="useEbayAR" checked> eBay(AR)</label>
-      <label><input type="checkbox" id="useEbayPR" checked> eBay(PR)</label>
-      <label><input type="checkbox" id="useEbayPRDDU" checked> eBay(PR:トランプ関税無しDDU時代 90days)</label><br>
-
-      <!-- 2行目：ヤフオク／メルカリ／ラクマ -->
-      <label><input type="checkbox" id="useYahu" checked> ヤフオク</label>
-      <label><input type="checkbox" id="useMercari" checked> メルカリ</label>
-      <label><input type="checkbox" id="useRakuma"> ラクマ</label><br>
-
-      <!-- 3行目：ヤフーショッピング -->
-      <label><input type="checkbox" id="useYahuShop"> ヤフーショッピング</label><br>
-
-      <!-- 4行目：Amazon -->
-      <label><input type="checkbox" id="useAmaJP"> Amazon.co.jp</label>
-      <label><input type="checkbox" id="useAmaUS"> Amazon.com</label><br>
-
-      <!-- 5行目：Etsy / Catawiki -->
-      <label><input type="checkbox" id="useEtsy"> Etsy</label>
-      <label><input type="checkbox" id="useCata"> Catawiki</label>
-
-      <div class="small" style="margin-top:4px;">
-        ※ PCでもスマホでも、リンクは下部に一覧表示されます。<br>
-      </div>
-    </div>
-
-    <button id="runBtn">検索</button>
+<div class="card">
+  <div>
+    <button type="button" id="openGoogleLensBtn" style="background:#6b7280;">Googleレンズを開く</button>
   </div>
 
-  <div id="result" class="card" style="display:none; margin-top:16px;">
-    <strong>リンク一覧（スマホ／PC共通）</strong>
-    <div id="resultLinks" class="small" style="margin-top:8px;"></div>
+  <div style="margin-top:12px;">
+    <strong>型番（ベースキーワード）</strong>
+    <div style="display:flex; gap:8px;">
+      <input type="text" id="keyword" placeholder="例：Nikon D750 50mm f1.8">
+      <button type="button" id="clearKeywordBtn" style="background:#6b7280;">クリア</button>
+    </div>
   </div>
 
-  <script>
-    // =========================================================
-    // ★ 時間価値 固定パラメータ（トシ実測）
-    // 重要：時間算出は「デフォルト5サイトのみ」で計算
-    //   eBay(AR) / eBay(PR) / eBay(PRトランプなし) / ヤフオク / メルカリ
-    // =========================================================
-    const TOOL_TIME_SEC = 8; // ツール検索 8秒（固定）
+  <button id="runBtn">検索</button>
+</div>
 
-    // デフォルト5サイトの「手動検索時間（秒）」固定
-    const DEFAULT5_TIME = {
-      ebayAR: 16,
-      ebayPR: 23,
-      ebayPRDDU: 45, // トランプなし（期間指定など込み）
-      yahoo: 15,
-      mercari: 15
-    };
+<div id="result" class="card" style="display:none;">
+  <strong>リンク一覧（スマホ／PC共通）</strong>
+  <div id="resultLinks"></div>
+</div>
 
-    // 換算用固定値（おまけ機能）
-    const DAILY_SEARCH_COUNT = 10;
-    const HOURLY_WAGE = 1500;
-    const REPAIR_PER_HOUR = 1;
-    const PROFIT_PER_REPAIR = 5000;
-    const PRIVATE_HOURS_PER_DAY = 7;
+<script>
+  // ===== 固定：時間創出は常に106秒 =====
+  const CREATED_SECONDS = 106;
 
-    // =========================================================
-    // ★ Googleレンズを別タブ or アプリで開く
-    // =========================================================
-    const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
+  // 換算用固定値
+  const DAILY_COUNT = 10;
+  const HOURLY_WAGE = 1500;
+  const PROFIT_PER_REPAIR = 5000;
+  const HOURS_PER_OUTING = 7;
 
-    if (openGoogleLensBtn) {
-      openGoogleLensBtn.addEventListener("click", () => {
-        const ua = navigator.userAgent.toLowerCase();
-        const isMobile = /iphone|ipad|ipod|android/.test(ua);
-        const isIOS = /iphone|ipad|ipod/.test(ua);
+  document.getElementById("clearKeywordBtn").onclick = () => {
+    document.getElementById("keyword").value = "";
+    document.getElementById("result").style.display = "none";
+  };
 
-        // PC
-        if (!isMobile) {
-          window.open("https://lens.google.com/", "_blank", "noopener");
-          return;
-        }
-
-        // Android
-        if (!isIOS) {
-          window.open("https://lens.google.com/", "_blank", "noopener");
-          return;
-        }
-
-        // iPhone / iPad
-        window.location.href = "google://";
-      });
+  document.getElementById("runBtn").onclick = () => {
+    const kw = document.getElementById("keyword").value.trim();
+    if (!kw) {
+      alert("キーワードを入力してください");
+      return;
     }
 
-    // =========================================================
-    // ★ クリアボタン：キーワードを空にして結果も消す
-    // =========================================================
-    const clearKeywordBtn = document.getElementById("clearKeywordBtn");
-    if (clearKeywordBtn) {
-      clearKeywordBtn.addEventListener("click", () => {
-        const keywordInput = document.getElementById("keyword");
-        keywordInput.value = "";
-        keywordInput.focus();
+    const links = [
+      { label: "eBay", url: "https://www.ebay.com" },
+      { label: "ヤフオク", url: "https://auctions.yahoo.co.jp" },
+      { label: "メルカリ", url: "https://jp.mercari.com" }
+    ];
 
-        const resultDiv = document.getElementById("result");
-        const resultLinks = document.getElementById("resultLinks");
-        resultDiv.style.display = "none";
-        resultLinks.innerHTML = "";
-      });
-    }
+    renderLinks(links, kw);
+  };
 
-    // =========================================================
-    // ★ 時間価値計算（デフォルト5サイトのみで計算）
-    //   ※他サイト（Amazon/Etsy/Catawiki等）を追加チェックしても時間は加算しない
-    // =========================================================
-    function calculateSavedTimeDefault5(siteFlags) {
-      let manual = 0;
+  function renderLinks(links, keyword) {
+    const result = document.getElementById("result");
+    const box = document.getElementById("resultLinks");
 
-      if (siteFlags.useEbayAR) manual += DEFAULT5_TIME.ebayAR;
-      if (siteFlags.useEbayPR) manual += DEFAULT5_TIME.ebayPR;
-      if (siteFlags.useEbayPRDDU) manual += DEFAULT5_TIME.ebayPRDDU;
-      if (siteFlags.useYahu) manual += DEFAULT5_TIME.yahoo;
-      if (siteFlags.useMercari) manual += DEFAULT5_TIME.mercari;
+    let html = "<ul class='result-list'>";
+    links.forEach(l => {
+      html += `<li><a class="result-link" href="${l.url}" target="_blank">${l.label}</a></li>`;
+    });
+    html += "</ul>";
 
-      // 5つ全部ONなら 114秒、ツール8秒で節約106秒になる想定
-      return Math.max(0, manual - TOOL_TIME_SEC);
-    }
+    // ===== 時間創出 計算（固定106秒）=====
+    const perSearch = CREATED_SECONDS;
+    const dailyMin = Math.round((perSearch * DAILY_COUNT) / 60);
+    const yearlyHours = Math.round((perSearch * DAILY_COUNT * 365) / 3600);
+    const yearlyWage = yearlyHours * HOURLY_WAGE;
+    const repairCount = yearlyHours;
+    const repairProfit = repairCount * PROFIT_PER_REPAIR;
+    const familyTrips = Math.round(yearlyHours / HOURS_PER_OUTING);
 
-    function formatMinutesSeconds(sec) {
-      const s = Math.max(0, Math.round(sec));
-      const m = Math.floor(s / 60);
-      const r = s % 60;
-      if (m <= 0) return `${r}秒`;
-      return `${m}分${r}秒`;
-    }
+    html += `
+      <hr>
+      <p><strong>本ツールの時間（価値）効果は以下の通りです。</strong></p>
 
-    function buildValueMessage(savedSec) {
-      const perSearchSec = Math.max(0, savedSec);
+      <p><strong>⏱ 時間創出（目安）</strong></p>
+      <ul class="small">
+        <li>今回の検索：約 ${Math.floor(perSearch/60)}分${perSearch%60}秒</li>
+        <li>1日10回なら：約 ${dailyMin} 分／日</li>
+        <li>1年なら：約 ${yearlyHours} 時間／年</li>
+      </ul>
 
-      const dailySec = perSearchSec * DAILY_SEARCH_COUNT;
-      const dailyMin = dailySec / 60;
+      <p><strong>💰 時給換算（時給 ${HOURLY_WAGE.toLocaleString()} 円）</strong></p>
+      <ul class="small">
+        <li>年間：${yearlyWage.toLocaleString()} 円 相当</li>
+      </ul>
 
-      const monthlyHours = (dailySec * 30) / 3600;
-      const yearlyHours  = (dailySec * 365) / 3600;
+      <p><strong>🔧 リペア換算（1時間1個／1個利益 ${PROFIT_PER_REPAIR.toLocaleString()} 円）</strong></p>
+      <ul class="small">
+        <li>年間：${repairCount} 個のリペアが可能</li>
+        <li>推定利益：${repairProfit.toLocaleString()} 円</li>
+      </ul>
 
-      const yearlyWage = Math.round(yearlyHours * HOURLY_WAGE);
+      <p><strong>🏕 プライベート換算</strong></p>
+      <ul class="small">
+        <li>年間：家族外出（7時間）なら：約 ${familyTrips} 回分の思い出が作れる</li>
+      </ul>
 
-      const repairCount  = Math.floor(yearlyHours * REPAIR_PER_HOUR);
-      const repairProfit = repairCount * PROFIT_PER_REPAIR;
+      <p class="small">
+        ※ 上記は作者がPCでデフォルト5サイトを一つずつ検索した場合と本ツールで一括検索した場合の実測値をもとにした時短効果の目安です。操作環境や慣れにより前後します。
+      </p>
+    `;
 
-      const privateDays = Math.round(yearlyHours / PRIVATE_HOURS_PER_DAY);
+    box.innerHTML = html;
+    result.style.display = "block";
 
-      return `
-        <hr style="margin:16px 0;">
-        <p style="margin:0 0 8px 0;"><strong>⏱ 時間価値（目安）</strong></p>
-        <ul class="small" style="margin-top:0;">
-          <li>今回の検索：<strong>約 ${formatMinutesSeconds(perSearchSec)}</strong></li>
-          <li>1日10回なら：<strong>約 ${Math.round(dailyMin)} 分／日</strong></li>
-          <li>1か月なら：<strong>約 ${monthlyHours.toFixed(1)} 時間／月</strong></li>
-          <li>1年なら：<strong>約 ${yearlyHours.toFixed(0)} 時間／年</strong></li>
-        </ul>
-
-        <p style="margin:12px 0 8px 0;"><strong>💰 時給換算（時給 ${HOURLY_WAGE.toLocaleString()} 円）</strong></p>
-        <ul class="small" style="margin-top:0;">
-          <li>年間：<strong>${yearlyWage.toLocaleString()} 円</strong> 相当</li>
-        </ul>
-
-        <p style="margin:12px 0 8px 0;"><strong>🔧 リペア換算（1時間1個／1個利益 ${PROFIT_PER_REPAIR.toLocaleString()} 円）</strong></p>
-        <ul class="small" style="margin-top:0;">
-          <li>年間：${repairCount.toLocaleString()} 個のリペアが可能</li>
-          <li>推定利益：<strong>${repairProfit.toLocaleString()} 円</strong></li>
-        </ul>
-
-        <p style="margin:12px 0 8px 0;"><strong>🏕 プライベート換算</strong></p>
-        <ul class="small" style="margin-top:0;">
-          <li>年間：家族外出（7時間）なら：<strong>約 ${privateDays.toLocaleString()} 回</strong>分の思い出が作れる</li>
-        </ul>
-
-        <p class="small" style="margin:12px 0 0 0;">
-          ※ 作者がデフォルト5サイトのパソコン検索で実測値をもとにした目安です。操作環境や慣れにより前後します。
-        </p>
-      `;
-    }
-
-    // =========================================================
-    // ★ 検索処理
-    // =========================================================
-    function runSearch() {
-      const keywordInput = document.getElementById("keyword");
-      const baseWord = keywordInput.value.trim();
-
-      if (!baseWord) {
-        alert("型番（ベースキーワード）を入力してください。");
-        keywordInput.focus();
-        return;
-      }
-
-      // 状態チェック
-      const condNew  = document.getElementById("cond_new").checked;
-      const condMint = document.getElementById("cond_mint").checked;
-      const condExc  = document.getElementById("cond_exc").checked;
-      const condRead = document.getElementById("cond_read").checked;
-      const condNow  = document.getElementById("cond_now").checked;
-      const condAsis = document.getElementById("cond_asis").checked;
-
-      // 付属品・特徴
-      const featBox   = document.getElementById("feat_box").checked;
-      const featHood  = document.getElementById("feat_hood").checked;
-      const featEarly = document.getElementById("feat_early").checked;
-      const featPre   = document.getElementById("feat_pre").checked;
-      const featPost  = document.getElementById("feat_post").checked;
-
-      // サイト選択
-      const useEbayAR    = document.getElementById("useEbayAR").checked;
-      const useEbayPR    = document.getElementById("useEbayPR").checked;
-      const useEbayPRDDU = document.getElementById("useEbayPRDDU").checked;
-
-      const useYahu      = document.getElementById("useYahu").checked;
-      const useMercari   = document.getElementById("useMercari").checked;
-      const useRakuma    = document.getElementById("useRakuma").checked;
-      const useYahuShop  = document.getElementById("useYahuShop").checked;
-      const useAmaJP     = document.getElementById("useAmaJP").checked;
-      const useAmaUS     = document.getElementById("useAmaUS").checked;
-      const useEtsy      = document.getElementById("useEtsy").checked;
-      const useCata      = document.getElementById("useCata").checked;
-
-      if (!useEbayAR && !useEbayPR && !useEbayPRDDU &&
-          !useYahu && !useMercari && !useRakuma &&
-          !useYahuShop && !useAmaJP && !useAmaUS &&
-          !useEtsy && !useCata) {
-        alert("少なくとも1つのサイトを選択してください。");
-        return;
-      }
-
-      const hasCondition = condNew || condMint || condExc || condRead || condNow || condAsis;
-
-      const conds = [];
-      if (condNew)  conds.push({ jp: "新品",   en: "new",   labelJP: "（新品）",   labelEN: "（new）" });
-      if (condMint) conds.push({ jp: "美品",   en: "mint",  labelJP: "（美品）",   labelEN: "（mint）" });
-      if (condExc)  conds.push({ jp: "並品",   en: "exc",   labelJP: "（並品）",   labelEN: "（exc）" });
-      if (condRead) conds.push({ jp: "訳あり", en: "read",  labelJP: "（訳あり）", labelEN: "（read）" });
-      if (condNow)  conds.push({ jp: "現状",   en: "asis",  labelJP: "（現状）",   labelEN: "（asis）" });
-      if (condAsis) conds.push({ jp: "ジャンク", en: "parts", labelJP: "（ジャンク）", labelEN: "（parts）" });
-
-      const addJP = [];
-      const addEN = [];
-      const addLabelJP = [];
-      const addLabelEN = [];
-
-      if (featBox)   { addJP.push("箱");   addEN.push("box");  addLabelJP.push("箱付き");     addLabelEN.push("box"); }
-      if (featHood)  { addJP.push("フード"); addEN.push("hood"); addLabelJP.push("フード付き"); addLabelEN.push("hood"); }
-      if (featEarly) { addJP.push("初期"); addEN.push("early"); addLabelJP.push("初期");       addLabelEN.push("early"); }
-      if (featPre)   { addJP.push("前期"); addEN.push("early"); addLabelJP.push("前期");       addLabelEN.push("early"); }
-      if (featPost)  { addJP.push("後期"); addEN.push("late");  addLabelJP.push("後期");       addLabelEN.push("late"); }
-
-      const links = [];
-
-      function buildSuffixJP(condLabelJP) {
-        const extras = addLabelJP.length ? " " + addLabelJP.join(" ") : "";
-        return (condLabelJP || "") + (extras ? extras.replace(/^ /, "（").replace(/$/, "）") : "");
-      }
-      function buildSuffixEN(condLabelEN) {
-        const extras = addLabelEN.length ? " " + addLabelEN.join(" ") : "";
-        return (condLabelEN || "") + (extras ? extras.replace(/^ /, "（").replace(/$/, "）") : "");
-      }
-
-      function buildJPQuery(base, condJP) {
-        let q = base;
-        if (condJP) q += " " + condJP;
-        if (addJP.length) q += " " + addJP.join(" ");
-        return q.trim();
-      }
-
-      function buildENQuery(base, condEN) {
-        let q = base;
-        if (condEN) q += " " + condEN;
-        if (addEN.length) q += " " + addEN.join(" ");
-        return q.replace(/\s+/g, " ").trim();
-      }
-
-      // eBay(AR)
-      if (useEbayAR) {
-        const baseEbayAR =
-          "https://www.ebay.com/sch/i.html?_nkw=TESTWORD&_sacat=0&_from=R40&LH_Sold=1&LH_Complete=1&_sop=16";
-        if (hasCondition) {
-          conds.forEach(c => {
-            const word = encodeURIComponent(buildENQuery(baseWord, c.en));
-            links.push({ label: "eBay(AR)" + buildSuffixEN(c.labelEN), url: baseEbayAR.replace("TESTWORD", word) });
-          });
-        } else {
-          const word = encodeURIComponent(buildENQuery(baseWord, ""));
-          links.push({ label: "eBay(AR)" + buildSuffixEN(""), url: baseEbayAR.replace("TESTWORD", word) });
-        }
-      }
-
-      // eBay(PR)
-      if (useEbayPR) {
-        const baseEbayPR =
-          "https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=TESTWORD&dayRange=90&categoryId=0&offset=0&limit=50&sorting=-avgsalesprice&tabName=SOLD&tz=Asia%2FTokyo";
-        if (hasCondition) {
-          conds.forEach(c => {
-            const word = encodeURIComponent(buildENQuery(baseWord, c.en));
-            links.push({ label: "eBay(PR)" + buildSuffixEN(c.labelEN), url: baseEbayPR.replace("TESTWORD", word) });
-          });
-        } else {
-          const word = encodeURIComponent(buildENQuery(baseWord, ""));
-          links.push({ label: "eBay(PR)" + buildSuffixEN(""), url: baseEbayPR.replace("TESTWORD", word) });
-        }
-      }
-
-      // eBay(PR:トランプ関税無しDDU時代 90days)
-      if (useEbayPRDDU) {
-        const baseEbayPRDDU =
-          "https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=TESTWORD&dayRange=CUSTOM&endDate=1743346800000&startDate=1735657200000&categoryId=0&offset=0&limit=50&sorting=-avgsalesprice&tabName=SOLD&tz=Asia%2FTokyo";
-        if (hasCondition) {
-          conds.forEach(c => {
-            const word = encodeURIComponent(buildENQuery(baseWord, c.en));
-            links.push({
-              label: "eBay(PR:トランプ関税無しDDU時代 90days)" + buildSuffixEN(c.labelEN),
-              url: baseEbayPRDDU.replace("TESTWORD", word)
-            });
-          });
-        } else {
-          const word = encodeURIComponent(buildENQuery(baseWord, ""));
-          links.push({
-            label: "eBay(PR:トランプ関税無しDDU時代 90days)" + buildSuffixEN(""),
-            url: baseEbayPRDDU.replace("TESTWORD", word)
-          });
-        }
-      }
-
-      // ヤフオク
-      if (useYahu) {
-        const baseYahu =
-          "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=TESTWORD&va=TESTWORD&b=1&n=100&select=2";
-        if (hasCondition) {
-          conds.forEach(c => {
-            const word = encodeURIComponent(buildJPQuery(baseWord, c.jp));
-            links.push({ label: "ヤフオク落札相場" + buildSuffixJP(c.labelJP), url: baseYahu.replace(/TESTWORD/g, word) });
-          });
-        } else {
-          const word = encodeURIComponent(buildJPQuery(baseWord, ""));
-          links.push({ label: "ヤフオク落札相場" + buildSuffixJP(""), url: baseYahu.replace(/TESTWORD/g, word) });
-        }
-      }
-
-      // メルカリ
-      if (useMercari) {
-        const baseMercari =
-          "https://jp.mercari.com/search?keyword=TESTWORD&status=sold_out%7Ctrading&sort=price&order=desc";
-        if (hasCondition) {
-          conds.forEach(c => {
-            const word = encodeURIComponent(buildJPQuery(baseWord, c.jp));
-            links.push({ label: "メルカリ（売り切れ）" + buildSuffixJP(c.labelJP), url: baseMercari.replace("TESTWORD", word) });
-          });
-        } else {
-          const word = encodeURIComponent(buildJPQuery(baseWord, ""));
-          links.push({ label: "メルカリ（売り切れ）" + buildSuffixJP(""), url: baseMercari.replace("TESTWORD", word) });
-        }
-      }
-
-      // ラクマ
-      if (useRakuma) {
-        const baseRakuma =
-          "https://fril.jp/s?order=desc&query=TESTWORD&sort=sell_price&transaction=soldout";
-        if (hasCondition) {
-          conds.forEach(c => {
-            const word = encodeURIComponent(buildJPQuery(baseWord, c.jp));
-            links.push({ label: "ラクマ（売り切れ）" + buildSuffixJP(c.labelJP), url: baseRakuma.replace("TESTWORD", word) });
-          });
-        } else {
-          const word = encodeURIComponent(buildJPQuery(baseWord, ""));
-          links.push({ label: "ラクマ（売り切れ）" + buildSuffixJP(""), url: baseRakuma.replace("TESTWORD", word) });
-        }
-      }
-
-      // ヤフーショッピング（状態は付けない / 付属品・特徴は付与）
-      if (useYahuShop) {
-        const baseYahuShop =
-          "https://shopping.yahoo.co.jp/search?first=1&tab_ex=commerce&fr=shp-prop&mcr=61c1e36d2245f2f47a36cdc31b5de2df&ts=1764813874&sretry=1&p=TESTWORD&sc_i=shopping-pc-web-top--h_srch-kwd&area=11";
-        const query = (baseWord + (addJP.length ? " " + addJP.join(" ") : "")).trim();
-        links.push({ label: "ヤフーショッピング" + buildSuffixJP(""), url: baseYahuShop.replace(/TESTWORD/g, encodeURIComponent(query)) });
-      }
-
-      // Amazon.co.jp（状態は付けない / 付属品・特徴は付与）
-      if (useAmaJP) {
-        const baseAmaJP =
-          "https://www.amazon.co.jp/s?k=TESTWORD&__mk_ja_JP=%E3%82%AB%E3%82%BF%E3%82%AB%E3%83%8A&crid=3VVGYVWD090II&sprefix=TESTWORD%2Caps%2C184&ref=nb_sb_noss_1";
-        const query = (baseWord + (addJP.length ? " " + addJP.join(" ") : "")).trim();
-        links.push({ label: "Amazon.co.jp" + buildSuffixJP(""), url: baseAmaJP.replace(/TESTWORD/g, encodeURIComponent(query)) });
-      }
-
-      // Amazon.com（状態は付けない / 付属品・特徴は付与）
-      if (useAmaUS) {
-        const baseAmaUS =
-          "https://www.amazon.com/s?k=TESTWORD&crid=311FN96333MS3&sprefix=TESTWORD+%2Caps%2C281&ref=nb_sb_noss_2";
-        const query = buildENQuery(baseWord, "");
-        links.push({ label: "Amazon.com" + buildSuffixEN(""), url: baseAmaUS.replace(/TESTWORD/g, encodeURIComponent(query)) });
-      }
-
-      // Etsy（状態は付けない / 付属品・特徴は付与）
-      if (useEtsy) {
-        const baseEtsy =
-          "https://www.etsy.com/jp/search?q=TESTWORD&order=price_desc";
-        const query = buildENQuery(baseWord, "");
-        links.push({ label: "Etsy（価格高い順）" + buildSuffixEN(""), url: baseEtsy.replace("TESTWORD", encodeURIComponent(query)) });
-      }
-
-      // Catawiki（状態は付けない / 付属品・特徴は付与）
-      if (useCata) {
-        const baseCata = "https://www.catawiki.com/en/s?q=TESTWORD";
-        const query = buildENQuery(baseWord, "");
-        links.push({ label: "Catawiki" + buildSuffixEN(""), url: baseCata.replace("TESTWORD", encodeURIComponent(query)) });
-      }
-
-      // ★ 時間価値は「デフォルト5サイト」だけで計算
-      const siteFlagsDefault5 = {
-        useEbayAR,
-        useEbayPR,
-        useEbayPRDDU,
-        useYahu,
-        useMercari
-      };
-      const savedSec = calculateSavedTimeDefault5(siteFlagsDefault5);
-
-      renderLinks(links, baseWord, savedSec);
-    }
-
-    document.getElementById("runBtn").addEventListener("click", runSearch);
-
-    (function bootFromQueryParam() {
-      const params = new URLSearchParams(window.location.search);
-      const q = (params.get("q") || "").trim();
-      if (!q) return;
-
-      const keywordInput = document.getElementById("keyword");
-      keywordInput.value = q;
-      keywordInput.focus();
-
-      setTimeout(() => runSearch(), 50);
-    })();
-
-    function renderLinks(links, keyword, savedSec) {
-      const resultDiv = document.getElementById("result");
-      const resultLinks = document.getElementById("resultLinks");
-
-      if (!links || links.length === 0) {
-        resultDiv.style.display = "none";
-        resultLinks.innerHTML = "";
-        return;
-      }
-
-      let html = '<ul class="result-list">';
-      links.forEach(link => {
-        html += `
-          <li>
-            <a class="result-link" href="${link.url}" target="_blank" rel="noopener noreferrer">
-              <strong>${link.label}</strong>
-            </a>
-          </li>
-        `;
-      });
-      html += "</ul>";
-
-      let copyText = `■検索キーワード：${keyword}\n\n`;
-      links.forEach(link => {
-        copyText += `${link.label}\n${link.url}\n\n`;
-      });
-
-      html += `
-        <p style="margin-top:12px; font-weight:bold;">コピー用（チャットワークなどに保存したいとき）</p>
-        <p class="small">※ 「この結果をコピー」ボタンを押して、チャットワークやメモに貼り付けてください。</p>
-        <button type="button" id="copyBtn">この結果をコピー</button>
-        <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
-      `;
-
-      // ★ 一番下に「時間価値（おまけ）」を追加
-      html += buildValueMessage(savedSec);
-
-      resultLinks.innerHTML = html;
-      resultDiv.style.display = "block";
-
-      // ★ 検索後に自動スクロール（PC/スマホ）
-      requestAnimationFrame(() => {
-        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-
-      const copyBtn = document.getElementById("copyBtn");
-      const copyArea = document.getElementById("copyArea");
-
-      if (copyBtn && copyArea) {
-        copyBtn.addEventListener("click", function () {
-          const text = copyArea.value;
-
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text)
-              .then(() => alert("コピーしました。チャットワークやメモに貼り付けてください。"))
-              .catch(() => {
-                copyArea.focus();
-                copyArea.select();
-                document.execCommand("copy");
-                alert("コピーしました。チャットワークやメモに貼り付けてください。");
-              });
-          } else {
-            copyArea.focus();
-            copyArea.select();
-            document.execCommand("copy");
-            alert("コピーしました。チャットワークやメモに貼り付けてください。");
-          }
-        });
-      }
-    }
-  </script>
+    // ★ 自動スクロール
+    requestAnimationFrame(() => {
+      result.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+</script>
 </body>
 </html>
