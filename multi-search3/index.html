@@ -75,11 +75,12 @@
     }
   </style>
 </head>
+
 <body>
   <h1>マルチサイト一括リサーチツール</h1>
 
   <div class="card">
-    <!-- ★ Googleレンズボタン（キーワードの上） -->
+    <!-- Googleレンズボタン -->
     <div>
       <button
         type="button"
@@ -90,23 +91,23 @@
       </button>
     </div>
 
+    <!-- キーワード＋クリア -->
     <div style="margin-top: 12px;">
       <label for="keyword"><strong>型番（ベースキーワード）</strong></label>
 
-      <!-- ★ 入力欄＋クリアボタン（横並び） -->
       <div style="display:flex; gap:8px; align-items:center;">
         <input type="text" id="keyword" placeholder="例：Nikon D750 50mm f1.8 など" style="flex:1;">
         <button
           type="button"
           id="clearKeywordBtn"
           style="background:#6b7280; color:#fff; margin-top:0; white-space:nowrap;"
-          aria-label="キーワードをクリア"
         >
           クリア
         </button>
       </div>
     </div>
 
+    <!-- 状態 -->
     <div style="margin-top: 12px;">
       <div><strong>状態（ヤフオク・メルカリ・ラクマ・eBay に反映）</strong></div>
       <label><input type="checkbox" id="cond_new"> 新品</label>
@@ -116,7 +117,7 @@
       <label><input type="checkbox" id="cond_now"> 現状</label>
       <label><input type="checkbox" id="cond_asis"> ジャンク</label>
 
-      <!-- ★ 付属品・特徴 -->
+      <!-- 付属品・特徴 -->
       <div style="margin-top: 10px;"><strong>付属品・特徴</strong></div>
       <label><input type="checkbox" id="feat_box"> 箱付き</label>
       <label><input type="checkbox" id="feat_hood"> フード付き</label>
@@ -125,31 +126,29 @@
       <label><input type="checkbox" id="feat_post"> 後期</label>
     </div>
 
+    <!-- 検索サイト -->
     <div style="margin-top: 12px;">
       <div><strong>検索するサイト</strong></div>
-      <!-- 1行目：eBay 3種 -->
+
+      <!-- eBay -->
       <label><input type="checkbox" id="useEbayAR" checked> eBay(AR)</label>
       <label><input type="checkbox" id="useEbayPR" checked> eBay(PR)</label>
       <label><input type="checkbox" id="useEbayPRDDU" checked> eBay(PR:トランプ関税無しDDU時代 90days)</label><br>
 
-      <!-- 2行目：ヤフオク／メルカリ／ラクマ -->
+      <!-- 国内 -->
       <label><input type="checkbox" id="useYahu" checked> ヤフオク</label>
       <label><input type="checkbox" id="useMercari" checked> メルカリ</label>
       <label><input type="checkbox" id="useRakuma"> ラクマ</label><br>
 
-      <!-- 3行目：ヤフーショッピング -->
+      <!-- その他 -->
       <label><input type="checkbox" id="useYahuShop"> ヤフーショッピング</label><br>
-
-      <!-- 4行目：Amazon -->
       <label><input type="checkbox" id="useAmaJP"> Amazon.co.jp</label>
       <label><input type="checkbox" id="useAmaUS"> Amazon.com</label><br>
-
-      <!-- 5行目：Etsy / Catawiki -->
       <label><input type="checkbox" id="useEtsy"> Etsy</label>
       <label><input type="checkbox" id="useCata"> Catawiki</label>
 
       <div class="small" style="margin-top:4px;">
-        ※ PCでもスマホでも、リンクは下部に一覧表示されます。<br>
+        ※ PCでもスマホでも、リンクは下部に一覧表示されます。
       </div>
     </div>
 
@@ -162,50 +161,55 @@
   </div>
 
   <script>
-    // ★ Googleレンズを別タブ or アプリで開く
-    const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
+    // =========================================================
+    // ★ 固定：時間創出は常に106秒（チェック状況に関係なく固定）
+    // =========================================================
+    const CREATED_SECONDS_FIXED = 106;
 
+    // おまけ換算（固定）
+    const DAILY_SEARCH_COUNT = 10;
+    const HOURLY_WAGE = 1500;
+    const REPAIR_PER_HOUR = 1;
+    const PROFIT_PER_REPAIR = 5000;
+    const PRIVATE_HOURS_PER_DAY = 7;
+
+    // =========================================================
+    // Googleレンズ
+    // =========================================================
+    const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
     if (openGoogleLensBtn) {
       openGoogleLensBtn.addEventListener("click", () => {
         const ua = navigator.userAgent.toLowerCase();
         const isMobile = /iphone|ipad|ipod|android/.test(ua);
         const isIOS = /iphone|ipad|ipod/.test(ua);
 
-        // PC
         if (!isMobile) {
           window.open("https://lens.google.com/", "_blank", "noopener");
           return;
         }
-
-        // Android → Lens Web（またはアプリがフック）
         if (!isIOS) {
           window.open("https://lens.google.com/", "_blank", "noopener");
           return;
         }
-
-        // iPhone / iPad → Googleアプリ起動を試す
         window.location.href = "google://";
       });
     }
 
-    // ★ クリアボタン：キーワードを空にして結果も消す
-    const clearKeywordBtn = document.getElementById("clearKeywordBtn");
-    if (clearKeywordBtn) {
-      clearKeywordBtn.addEventListener("click", () => {
-        const keywordInput = document.getElementById("keyword");
-        keywordInput.value = "";
-        keywordInput.focus();
+    // =========================================================
+    // クリアボタン
+    // =========================================================
+    document.getElementById("clearKeywordBtn").addEventListener("click", () => {
+      const keywordInput = document.getElementById("keyword");
+      keywordInput.value = "";
+      keywordInput.focus();
 
-        // 結果表示を消す（前のリンクが残ると混乱するため）
-        const resultDiv = document.getElementById("result");
-        const resultLinks = document.getElementById("resultLinks");
-        resultDiv.style.display = "none";
-        resultLinks.innerHTML = "";
-      });
-    }
+      // 結果を閉じる
+      document.getElementById("result").style.display = "none";
+      document.getElementById("resultLinks").innerHTML = "";
+    });
 
     // =========================================================
-    // ★ 検索処理
+    // 検索処理
     // =========================================================
     function runSearch() {
       const keywordInput = document.getElementById("keyword");
@@ -222,15 +226,15 @@
       const condMint = document.getElementById("cond_mint").checked;
       const condExc  = document.getElementById("cond_exc").checked;
       const condRead = document.getElementById("cond_read").checked;
-      const condNow  = document.getElementById("cond_now").checked;   // 現状
-      const condAsis = document.getElementById("cond_asis").checked;  // ジャンク（eBayはparts）
+      const condNow  = document.getElementById("cond_now").checked;
+      const condAsis = document.getElementById("cond_asis").checked;
 
       // 付属品・特徴
-      const featBox  = document.getElementById("feat_box").checked;
-      const featHood = document.getElementById("feat_hood").checked;
+      const featBox   = document.getElementById("feat_box").checked;
+      const featHood  = document.getElementById("feat_hood").checked;
       const featEarly = document.getElementById("feat_early").checked;
-      const featPre  = document.getElementById("feat_pre").checked;
-      const featPost = document.getElementById("feat_post").checked;
+      const featPre   = document.getElementById("feat_pre").checked;
+      const featPost  = document.getElementById("feat_post").checked;
 
       // サイト選択
       const useEbayAR    = document.getElementById("useEbayAR").checked;
@@ -240,6 +244,7 @@
       const useYahu      = document.getElementById("useYahu").checked;
       const useMercari   = document.getElementById("useMercari").checked;
       const useRakuma    = document.getElementById("useRakuma").checked;
+
       const useYahuShop  = document.getElementById("useYahuShop").checked;
       const useAmaJP     = document.getElementById("useAmaJP").checked;
       const useAmaUS     = document.getElementById("useAmaUS").checked;
@@ -262,46 +267,40 @@
       if (condMint) conds.push({ jp: "美品",   en: "mint",  labelJP: "（美品）",   labelEN: "（mint）" });
       if (condExc)  conds.push({ jp: "並品",   en: "exc",   labelJP: "（並品）",   labelEN: "（exc）" });
       if (condRead) conds.push({ jp: "訳あり", en: "read",  labelJP: "（訳あり）", labelEN: "（read）" });
-      // 現状：eBayは asis
       if (condNow)  conds.push({ jp: "現状",   en: "asis",  labelJP: "（現状）",   labelEN: "（asis）" });
-      // ジャンク：eBayは parts
       if (condAsis) conds.push({ jp: "ジャンク", en: "parts", labelJP: "（ジャンク）", labelEN: "（parts）" });
 
-      // 付属品・特徴：検索クエリに付与する語
-      // ※同時に複数選ばれたら全部足す（前期/後期など矛盾は許容）
+      // 付属品・特徴：検索語に追加（同時選択は全部足す）
       const addJP = [];
       const addEN = [];
       const addLabelJP = [];
       const addLabelEN = [];
 
-      if (featBox)  { addJP.push("箱"); addEN.push("box"); addLabelJP.push("箱付き"); addLabelEN.push("box"); }
-      if (featHood) { addJP.push("フード"); addEN.push("hood"); addLabelJP.push("フード付き"); addLabelEN.push("hood"); }
-      if (featEarly){ addJP.push("初期"); addEN.push("early"); addLabelJP.push("初期"); addLabelEN.push("early"); }
-      if (featPre)  { addJP.push("前期"); addEN.push("early"); addLabelJP.push("前期"); addLabelEN.push("early"); }
-      if (featPost) { addJP.push("後期"); addEN.push("late");  addLabelJP.push("後期"); addLabelEN.push("late"); }
+      if (featBox)   { addJP.push("箱");     addEN.push("box");  addLabelJP.push("箱付き");     addLabelEN.push("box"); }
+      if (featHood)  { addJP.push("フード"); addEN.push("hood"); addLabelJP.push("フード付き"); addLabelEN.push("hood"); }
+      if (featEarly) { addJP.push("初期");   addEN.push("early");addLabelJP.push("初期");       addLabelEN.push("early"); }
+      if (featPre)   { addJP.push("前期");   addEN.push("early");addLabelJP.push("前期");       addLabelEN.push("early"); }
+      if (featPost)  { addJP.push("後期");   addEN.push("late"); addLabelJP.push("後期");       addLabelEN.push("late"); }
 
-      const plainUrlWord = encodeURIComponent(baseWord);
-      const links = []; // {label, url}
-
-      // ラベル末尾（表示用）
+      // 表示用サフィックス
       function buildSuffixJP(condLabelJP) {
-        const extras = addLabelJP.length ? " " + addLabelJP.join(" ") : "";
-        return (condLabelJP || "") + (extras ? extras.replace(/^ /, "（").replace(/$/, "）") : "");
+        const extras = addLabelJP.length ? addLabelJP.join(" ") : "";
+        const extraWrapped = extras ? `（${extras}）` : "";
+        return (condLabelJP || "") + extraWrapped;
       }
       function buildSuffixEN(condLabelEN) {
-        const extras = addLabelEN.length ? " " + addLabelEN.join(" ") : "";
-        return (condLabelEN || "") + (extras ? extras.replace(/^ /, "（").replace(/$/, "）") : "");
+        const extras = addLabelEN.length ? addLabelEN.join(" ") : "";
+        const extraWrapped = extras ? `（${extras}）` : "";
+        return (condLabelEN || "") + extraWrapped;
       }
 
-      // クエリ組み立て（日本語サイト）
+      // クエリ組み立て
       function buildJPQuery(base, condJP) {
         let q = base;
         if (condJP) q += " " + condJP;
         if (addJP.length) q += " " + addJP.join(" ");
         return q.trim();
       }
-
-      // クエリ組み立て（eBay）
       function buildENQuery(base, condEN) {
         let q = base;
         if (condEN) q += " " + condEN;
@@ -309,206 +308,152 @@
         return q.replace(/\s+/g, " ").trim();
       }
 
-      // =========================================================
-      // eBay(AR) （SOLD・高い順）
-      // =========================================================
+      const links = [];
+
+      // eBay(AR) SOLD 高い順
       if (useEbayAR) {
         const baseEbayAR =
           "https://www.ebay.com/sch/i.html?_nkw=TESTWORD&_sacat=0&_from=R40&LH_Sold=1&LH_Complete=1&_sop=16";
 
         if (hasCondition) {
           conds.forEach(c => {
-            const query = buildENQuery(baseWord, c.en);
-            const word = encodeURIComponent(query);
-            const url = baseEbayAR.replace("TESTWORD", word);
-            links.push({ label: "eBay(AR)" + buildSuffixEN(c.labelEN), url });
+            const word = encodeURIComponent(buildENQuery(baseWord, c.en));
+            links.push({ label: "eBay(AR)" + c.labelEN + buildSuffixEN(""), url: baseEbayAR.replace("TESTWORD", word) });
           });
         } else {
-          const query = buildENQuery(baseWord, "");
-          const word = encodeURIComponent(query);
-          const url = baseEbayAR.replace("TESTWORD", word);
-          links.push({ label: "eBay(AR)" + buildSuffixEN(""), url });
+          const word = encodeURIComponent(buildENQuery(baseWord, ""));
+          links.push({ label: "eBay(AR)" + buildSuffixEN(""), url: baseEbayAR.replace("TESTWORD", word) });
         }
       }
 
-      // =========================================================
-      // eBay(PR) （Product Research / 直近90日）
-      // =========================================================
+      // eBay(PR) 90日
       if (useEbayPR) {
         const baseEbayPR =
           "https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=TESTWORD&dayRange=90&categoryId=0&offset=0&limit=50&sorting=-avgsalesprice&tabName=SOLD&tz=Asia%2FTokyo";
 
         if (hasCondition) {
           conds.forEach(c => {
-            const query = buildENQuery(baseWord, c.en);
-            const word = encodeURIComponent(query);
-            const url = baseEbayPR.replace("TESTWORD", word);
-            links.push({ label: "eBay(PR)" + buildSuffixEN(c.labelEN), url });
+            const word = encodeURIComponent(buildENQuery(baseWord, c.en));
+            links.push({ label: "eBay(PR)" + c.labelEN + buildSuffixEN(""), url: baseEbayPR.replace("TESTWORD", word) });
           });
         } else {
-          const query = buildENQuery(baseWord, "");
-          const word = encodeURIComponent(query);
-          const url = baseEbayPR.replace("TESTWORD", word);
-          links.push({ label: "eBay(PR)" + buildSuffixEN(""), url });
+          const word = encodeURIComponent(buildENQuery(baseWord, ""));
+          links.push({ label: "eBay(PR)" + buildSuffixEN(""), url: baseEbayPR.replace("TESTWORD", word) });
         }
       }
 
-      // =========================================================
-      // eBay(PR:トランプ関税無しDDU時代 90days) （DDU時代固定期間）
-      // =========================================================
+      // eBay(PR DDU時代固定期間)
       if (useEbayPRDDU) {
         const baseEbayPRDDU =
           "https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=TESTWORD&dayRange=CUSTOM&endDate=1743346800000&startDate=1735657200000&categoryId=0&offset=0&limit=50&sorting=-avgsalesprice&tabName=SOLD&tz=Asia%2FTokyo";
 
         if (hasCondition) {
           conds.forEach(c => {
-            const query = buildENQuery(baseWord, c.en);
-            const word = encodeURIComponent(query);
-            const url = baseEbayPRDDU.replace("TESTWORD", word);
-            links.push({ label: "eBay(PR:トランプ関税無しDDU時代 90days)" + buildSuffixEN(c.labelEN), url });
+            const word = encodeURIComponent(buildENQuery(baseWord, c.en));
+            links.push({
+              label: "eBay(PR:トランプ関税無しDDU時代 90days)" + c.labelEN + buildSuffixEN(""),
+              url: baseEbayPRDDU.replace("TESTWORD", word)
+            });
           });
         } else {
-          const query = buildENQuery(baseWord, "");
-          const word = encodeURIComponent(query);
-          const url = baseEbayPRDDU.replace("TESTWORD", word);
-          links.push({ label: "eBay(PR:トランプ関税無しDDU時代 90days)" + buildSuffixEN(""), url });
+          const word = encodeURIComponent(buildENQuery(baseWord, ""));
+          links.push({
+            label: "eBay(PR:トランプ関税無しDDU時代 90days)" + buildSuffixEN(""),
+            url: baseEbayPRDDU.replace("TESTWORD", word)
+          });
         }
       }
 
-      // --------------------
-      // ヤフオク（落札相場・高い順）
-      // --------------------
+      // ヤフオク（落札相場）
       if (useYahu) {
         const baseYahu =
           "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=TESTWORD&va=TESTWORD&b=1&n=100&select=2";
 
         if (hasCondition) {
           conds.forEach(c => {
-            const query = buildJPQuery(baseWord, c.jp);
-            const word = encodeURIComponent(query);
-            const url = baseYahu.replace(/TESTWORD/g, word);
-            links.push({ label: "ヤフオク落札相場" + buildSuffixJP(c.labelJP), url });
+            const word = encodeURIComponent(buildJPQuery(baseWord, c.jp));
+            links.push({ label: "ヤフオク落札相場" + c.labelJP + buildSuffixJP(""), url: baseYahu.replace(/TESTWORD/g, word) });
           });
         } else {
-          const query = buildJPQuery(baseWord, "");
-          const word = encodeURIComponent(query);
-          const url = baseYahu.replace(/TESTWORD/g, word);
-          links.push({ label: "ヤフオク落札相場" + buildSuffixJP(""), url });
+          const word = encodeURIComponent(buildJPQuery(baseWord, ""));
+          links.push({ label: "ヤフオク落札相場" + buildSuffixJP(""), url: baseYahu.replace(/TESTWORD/g, word) });
         }
       }
 
-      // --------------------
-      // メルカリ（売り切れ・高い順）
-      // --------------------
+      // メルカリ（売り切れ）
       if (useMercari) {
         const baseMercari =
           "https://jp.mercari.com/search?keyword=TESTWORD&status=sold_out%7Ctrading&sort=price&order=desc";
 
         if (hasCondition) {
           conds.forEach(c => {
-            const query = buildJPQuery(baseWord, c.jp);
-            const word = encodeURIComponent(query);
-            const url = baseMercari.replace("TESTWORD", word);
-            links.push({ label: "メルカリ（売り切れ）" + buildSuffixJP(c.labelJP), url });
+            const word = encodeURIComponent(buildJPQuery(baseWord, c.jp));
+            links.push({ label: "メルカリ（売り切れ）" + c.labelJP + buildSuffixJP(""), url: baseMercari.replace("TESTWORD", word) });
           });
         } else {
-          const query = buildJPQuery(baseWord, "");
-          const word = encodeURIComponent(query);
-          const url = baseMercari.replace("TESTWORD", word);
-          links.push({ label: "メルカリ（売り切れ）" + buildSuffixJP(""), url });
+          const word = encodeURIComponent(buildJPQuery(baseWord, ""));
+          links.push({ label: "メルカリ（売り切れ）" + buildSuffixJP(""), url: baseMercari.replace("TESTWORD", word) });
         }
       }
 
-      // --------------------
-      // ラクマ（売り切れ・価格高い順）
-      // --------------------
+      // ラクマ（売り切れ）
       if (useRakuma) {
         const baseRakuma =
           "https://fril.jp/s?order=desc&query=TESTWORD&sort=sell_price&transaction=soldout";
 
         if (hasCondition) {
           conds.forEach(c => {
-            const query = buildJPQuery(baseWord, c.jp);
-            const word = encodeURIComponent(query);
-            const url = baseRakuma.replace("TESTWORD", word);
-            links.push({ label: "ラクマ（売り切れ）" + buildSuffixJP(c.labelJP), url });
+            const word = encodeURIComponent(buildJPQuery(baseWord, c.jp));
+            links.push({ label: "ラクマ（売り切れ）" + c.labelJP + buildSuffixJP(""), url: baseRakuma.replace("TESTWORD", word) });
           });
         } else {
-          const query = buildJPQuery(baseWord, "");
-          const word = encodeURIComponent(query);
-          const url = baseRakuma.replace("TESTWORD", word);
-          links.push({ label: "ラクマ（売り切れ）" + buildSuffixJP(""), url });
+          const word = encodeURIComponent(buildJPQuery(baseWord, ""));
+          links.push({ label: "ラクマ（売り切れ）" + buildSuffixJP(""), url: baseRakuma.replace("TESTWORD", word) });
         }
       }
 
-      // --------------------
-      // ヤフーショッピング（状態ワードは付けない / 付属品・特徴は付与）
-      // --------------------
+      // ヤフーショッピング（状態は付けない / 付属品・特徴は付与）
       if (useYahuShop) {
         const baseYahuShop =
-          "https://shopping.yahoo.co.jp/search?first=1&tab_ex=commerce&fr=shp-prop&mcr=61c1e36d2245f2f47a36cdc31b5de2df&ts=1764813874&sretry=1&p=TESTWORD&sc_i=shopping-pc-web-top--h_srch-kwd&area=11";
-
+          "https://shopping.yahoo.co.jp/search?first=1&tab_ex=commerce&fr=shp-prop&mcr=61c1e36d2245f2f47a36cdc31b5de2df&sretry=1&p=TESTWORD";
         const query = (baseWord + (addJP.length ? " " + addJP.join(" ") : "")).trim();
-        const url = baseYahuShop.replace(/TESTWORD/g, encodeURIComponent(query));
-        links.push({ label: "ヤフーショッピング" + buildSuffixJP(""), url });
+        links.push({ label: "ヤフーショッピング" + buildSuffixJP(""), url: baseYahuShop.replace("TESTWORD", encodeURIComponent(query)) });
       }
 
-      // --------------------
-      // Amazon.co.jp（状態ワードは付けない / 付属品・特徴は付与）
-      // --------------------
+      // Amazon.co.jp（状態は付けない / 付属品・特徴は付与）
       if (useAmaJP) {
-        const baseAmaJP =
-          "https://www.amazon.co.jp/s?k=TESTWORD&__mk_ja_JP=%E3%82%AB%E3%82%BF%E3%82%AB%E3%83%8A&crid=3VVGYVWD090II&sprefix=TESTWORD%2Caps%2C184&ref=nb_sb_noss_1";
-
+        const baseAmaJP = "https://www.amazon.co.jp/s?k=TESTWORD";
         const query = (baseWord + (addJP.length ? " " + addJP.join(" ") : "")).trim();
-        const url = baseAmaJP.replace(/TESTWORD/g, encodeURIComponent(query));
-        links.push({ label: "Amazon.co.jp" + buildSuffixJP(""), url });
+        links.push({ label: "Amazon.co.jp" + buildSuffixJP(""), url: baseAmaJP.replace("TESTWORD", encodeURIComponent(query)) });
       }
 
-      // --------------------
-      // Amazon.com（状態ワードは付けない / 付属品・特徴は付与）
-      // --------------------
+      // Amazon.com（状態は付けない / 付属品・特徴は付与）
       if (useAmaUS) {
-        const baseAmaUS =
-          "https://www.amazon.com/s?k=TESTWORD&crid=311FN96333MS3&sprefix=TESTWORD+%2Caps%2C281&ref=nb_sb_noss_2";
-
-        const query = buildENQuery(baseWord, ""); // EN側
-        const url = baseAmaUS.replace(/TESTWORD/g, encodeURIComponent(query));
-        links.push({ label: "Amazon.com" + buildSuffixEN(""), url });
-      }
-
-      // --------------------
-      // Etsy（状態ワードは付けない / 付属品・特徴は付与）
-      // --------------------
-      if (useEtsy) {
-        const baseEtsy =
-          "https://www.etsy.com/jp/search?q=TESTWORD&order=price_desc";
-
+        const baseAmaUS = "https://www.amazon.com/s?k=TESTWORD";
         const query = buildENQuery(baseWord, "");
-        const url = baseEtsy.replace("TESTWORD", encodeURIComponent(query));
-        links.push({ label: "Etsy（価格高い順）" + buildSuffixEN(""), url });
+        links.push({ label: "Amazon.com" + buildSuffixEN(""), url: baseAmaUS.replace("TESTWORD", encodeURIComponent(query)) });
       }
 
-      // --------------------
-      // Catawiki（状態ワードは付けない / 付属品・特徴は付与）
-      // --------------------
+      // Etsy（状態は付けない）
+      if (useEtsy) {
+        const baseEtsy = "https://www.etsy.com/jp/search?q=TESTWORD&order=price_desc";
+        const query = buildENQuery(baseWord, "");
+        links.push({ label: "Etsy（価格高い順）" + buildSuffixEN(""), url: baseEtsy.replace("TESTWORD", encodeURIComponent(query)) });
+      }
+
+      // Catawiki（状態は付けない）
       if (useCata) {
         const baseCata = "https://www.catawiki.com/en/s?q=TESTWORD";
         const query = buildENQuery(baseWord, "");
-        const url = baseCata.replace("TESTWORD", encodeURIComponent(query));
-        links.push({ label: "Catawiki" + buildSuffixEN(""), url });
+        links.push({ label: "Catawiki" + buildSuffixEN(""), url: baseCata.replace("TESTWORD", encodeURIComponent(query)) });
       }
 
       renderLinks(links, baseWord);
     }
 
-    // ボタン押下 → 検索
     document.getElementById("runBtn").addEventListener("click", runSearch);
 
-    // =========================================================
-    // ★ URLパラメータ（q）で起動：自動入力＆自動検索
-    //    例）.../multi-search3/?q=Nikon%20D750
-    // =========================================================
+    // URLパラメータ q で起動
     (function bootFromQueryParam() {
       const params = new URLSearchParams(window.location.search);
       const q = (params.get("q") || "").trim();
@@ -518,10 +463,69 @@
       keywordInput.value = q;
       keywordInput.focus();
 
-      setTimeout(() => {
-        runSearch();
-      }, 50);
+      setTimeout(() => runSearch(), 50);
     })();
+
+    // =========================================================
+    // 描画＋コピー＋時間創出（固定106秒）＋自動スクロール
+    // =========================================================
+    function formatMinutesSeconds(sec) {
+      const s = Math.max(0, Math.round(sec));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      if (m <= 0) return `${r}秒`;
+      return `${m}分${r}秒`;
+    }
+
+    function buildValueMessageFixed() {
+      const perSearchSec = CREATED_SECONDS_FIXED;
+
+      const dailySec = perSearchSec * DAILY_SEARCH_COUNT;
+      const dailyMin = Math.round(dailySec / 60);
+
+      const monthlyHours = (dailySec * 30) / 3600;
+      const yearlyHours  = (dailySec * 365) / 3600;
+
+      const yearlyWage = Math.round(yearlyHours * HOURLY_WAGE);
+
+      const repairCount  = Math.floor(yearlyHours * REPAIR_PER_HOUR);
+      const repairProfit = repairCount * PROFIT_PER_REPAIR;
+
+      const privateDays = Math.round(yearlyHours / PRIVATE_HOURS_PER_DAY);
+
+      return `
+        <hr style="margin:16px 0;">
+        <p style="margin:0 0 10px 0; font-weight:bold;">ツールの時間（価値）効果は以下の通りです。</p>
+
+        <p style="margin:0 0 8px 0;"><strong>⏱ 時間創出（目安）</strong></p>
+        <ul class="small" style="margin-top:0;">
+          <li>今回の検索：約 <strong>${formatMinutesSeconds(perSearchSec)}</strong></li>
+          <li>1日10回なら：約 <strong>${dailyMin} 分／日</strong></li>
+          <li>1か月なら：約 <strong>${monthlyHours.toFixed(1)} 時間／月</strong></li>
+          <li>1年なら：約 <strong>${yearlyHours.toFixed(0)} 時間／年</strong></li>
+        </ul>
+
+        <p style="margin:12px 0 8px 0;"><strong>💰 時給換算（時給 ${HOURLY_WAGE.toLocaleString()} 円）</strong></p>
+        <ul class="small" style="margin-top:0;">
+          <li>年間：<strong>${yearlyWage.toLocaleString()} 円</strong> 相当</li>
+        </ul>
+
+        <p style="margin:12px 0 8px 0;"><strong>🔧 リペア換算（1時間1個／1個利益 ${PROFIT_PER_REPAIR.toLocaleString()} 円）</strong></p>
+        <ul class="small" style="margin-top:0;">
+          <li>年間：${repairCount.toLocaleString()} 個のリペアが可能</li>
+          <li>推定利益：<strong>${repairProfit.toLocaleString()} 円</strong></li>
+        </ul>
+
+        <p style="margin:12px 0 8px 0;"><strong>🏕 プライベート換算</strong></p>
+        <ul class="small" style="margin-top:0;">
+          <li>年間：家族外出（7時間）なら：約 <strong>${privateDays.toLocaleString()} 回</strong>分の思い出が作れる</li>
+        </ul>
+
+        <p class="small" style="margin:12px 0 0 0;">
+          ※ 上記は作者がPCでデフォルト5サイトを一つずつ検索した場合と本ツールで一括検索した場合の実測値をもとにした時短効果の目安です。操作環境や慣れにより前後します。
+        </p>
+      `;
+    }
 
     function renderLinks(links, keyword) {
       const resultDiv = document.getElementById("result");
@@ -533,7 +537,6 @@
         return;
       }
 
-      // 画面表示用リンク一覧
       let html = '<ul class="result-list">';
       links.forEach(link => {
         html += `
@@ -546,7 +549,7 @@
       });
       html += "</ul>";
 
-      // コピー用テキスト（先頭にキーワード）
+      // コピー用
       let copyText = "";
       copyText += `■検索キーワード：${keyword}\n\n`;
       links.forEach(link => {
@@ -560,9 +563,18 @@
         <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
       `;
 
+      // ★ 時間創出（固定106秒）
+      html += buildValueMessageFixed();
+
       resultLinks.innerHTML = html;
       resultDiv.style.display = "block";
 
+      // ★ 自動スクロール（スマホ/PC）
+      requestAnimationFrame(() => {
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      // コピー処理
       const copyBtn = document.getElementById("copyBtn");
       const copyArea = document.getElementById("copyArea");
 
