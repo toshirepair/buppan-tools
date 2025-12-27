@@ -162,7 +162,30 @@
   </div>
 
   <script>
+    // =========================================================
+    // ★ 時間価値 固定パラメータ（トシ実測）
+    // =========================================================
+    const TOOL_TIME_SEC = 8; // ツール操作 8秒
+
+    // 各サイトの手動検索時間（秒）
+    const SITE_TIME = {
+      ebayAR: 16,
+      ebayPR: 23,
+      yahoo: 15,
+      mercari: 15,
+      other: 8
+    };
+
+    // 換算用固定値
+    const DAILY_SEARCH_COUNT = 10;
+    const HOURLY_WAGE = 1500;
+    const REPAIR_PER_HOUR = 1;       // 1時間1個
+    const PROFIT_PER_REPAIR = 5000;  // 1個あたり利益
+    const PRIVATE_HOURS_PER_DAY = 7; // 家族外出 1回7時間
+
+    // =========================================================
     // ★ Googleレンズを別タブ or アプリで開く
+    // =========================================================
     const openGoogleLensBtn = document.getElementById("openGoogleLensBtn");
 
     if (openGoogleLensBtn) {
@@ -188,7 +211,9 @@
       });
     }
 
+    // =========================================================
     // ★ クリアボタン：キーワードを空にして結果も消す
+    // =========================================================
     const clearKeywordBtn = document.getElementById("clearKeywordBtn");
     if (clearKeywordBtn) {
       clearKeywordBtn.addEventListener("click", () => {
@@ -202,6 +227,92 @@
         resultDiv.style.display = "none";
         resultLinks.innerHTML = "";
       });
+    }
+
+    // =========================================================
+    // ★ 時間価値計算：今回開いたサイト構成から「節約秒」を算出
+    // =========================================================
+    function calculateSavedTime(siteFlags) {
+      let manualTime = 0;
+
+      if (siteFlags.useEbayAR) manualTime += SITE_TIME.ebayAR;
+      if (siteFlags.useEbayPR) manualTime += SITE_TIME.ebayPR;
+      if (siteFlags.useEbayPRDDU) manualTime += SITE_TIME.ebayPR;
+
+      if (siteFlags.useYahu) manualTime += SITE_TIME.yahoo;
+      if (siteFlags.useMercari) manualTime += SITE_TIME.mercari;
+
+      if (siteFlags.useRakuma) manualTime += SITE_TIME.other;
+      if (siteFlags.useYahuShop) manualTime += SITE_TIME.other;
+      if (siteFlags.useAmaJP) manualTime += SITE_TIME.other;
+      if (siteFlags.useAmaUS) manualTime += SITE_TIME.other;
+      if (siteFlags.useEtsy) manualTime += SITE_TIME.other;
+      if (siteFlags.useCata) manualTime += SITE_TIME.other;
+
+      const savedSec = Math.max(0, manualTime - TOOL_TIME_SEC);
+      return savedSec;
+    }
+
+    function formatMinutesSeconds(sec) {
+      const s = Math.max(0, Math.round(sec));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      if (m <= 0) return `${r}秒`;
+      return `${m}分${r}秒`;
+    }
+
+    function buildValueMessage(savedSec) {
+      // 1回あたり
+      const perSearchSec = Math.max(0, savedSec);
+      const perSearchMin = perSearchSec / 60;
+
+      // 1日10回 → 月(30日) → 年(365日)
+      const dailySec = perSearchSec * DAILY_SEARCH_COUNT;
+      const dailyMin = dailySec / 60;
+
+      const monthlyHours = (dailySec * 30) / 3600;
+      const yearlyHours = (dailySec * 365) / 3600;
+
+      // 時給換算
+      const yearlyWage = Math.round(yearlyHours * HOURLY_WAGE);
+
+      // リペア換算（切り捨て）
+      const repairCount = Math.floor(yearlyHours * REPAIR_PER_HOUR);
+      const repairProfit = repairCount * PROFIT_PER_REPAIR;
+
+      // プライベート換算（四捨五入して「約◯回」に寄せる）
+      const privateDays = Math.round(yearlyHours / PRIVATE_HOURS_PER_DAY);
+
+      return `
+        <hr style="margin:16px 0;">
+        <p style="margin:0 0 8px 0;"><strong>⏱ 時間価値（目安）</strong></p>
+        <ul class="small" style="margin-top:0;">
+          <li>今回の検索：<strong>約 ${formatMinutesSeconds(perSearchSec)}</strong></li>
+          <li>1日10回なら：<strong>約 ${Math.round(dailyMin)} 分／日</strong></li>
+          <li>1か月なら：<strong>約 ${monthlyHours.toFixed(1)} 時間／月</strong></li>
+          <li>1年なら：<strong>約 ${yearlyHours.toFixed(0)} 時間／年</strong></li>
+        </ul>
+
+        <p style="margin:12px 0 8px 0;"><strong>💰 時給換算（時給 ${HOURLY_WAGE.toLocaleString()} 円）</strong></p>
+        <ul class="small" style="margin-top:0;">
+          <li>年間：<strong>${yearlyWage.toLocaleString()} 円</strong> 相当</li>
+        </ul>
+
+        <p style="margin:12px 0 8px 0;"><strong>🔧 リペア換算（1時間1個／1個利益 ${PROFIT_PER_REPAIR.toLocaleString()} 円）</strong></p>
+        <ul class="small" style="margin-top:0;">
+          <li>${repairCount.toLocaleString()} 個のリペアが可能</li>
+          <li>推定利益：<strong>${repairProfit.toLocaleString()} 円</strong></li>
+        </ul>
+
+        <p style="margin:12px 0 8px 0;"><strong>🏕 プライベート換算</strong></p>
+        <ul class="small" style="margin-top:0;">
+          <li>家族外出（7時間）なら：<strong>約 ${privateDays.toLocaleString()} 回</strong>分の思い出が作れる</li>
+        </ul>
+
+        <p class="small" style="margin:12px 0 0 0;">
+          ※ 作者の実測値をもとにした目安です。操作環境や慣れにより前後します。
+        </p>
+      `;
     }
 
     // =========================================================
@@ -280,7 +391,6 @@
       if (featPre)  { addJP.push("前期"); addEN.push("early"); addLabelJP.push("前期"); addLabelEN.push("early"); }
       if (featPost) { addJP.push("後期"); addEN.push("late");  addLabelJP.push("後期"); addLabelEN.push("late"); }
 
-      const plainUrlWord = encodeURIComponent(baseWord);
       const links = []; // {label, url}
 
       // ラベル末尾（表示用）
@@ -499,7 +609,24 @@
         links.push({ label: "Catawiki" + buildSuffixEN(""), url });
       }
 
-      renderLinks(links, baseWord);
+      // ★ 今回のサイト構成 → 節約秒数を算出（固定実測）
+      const siteFlags = {
+        useEbayAR,
+        useEbayPR,
+        useEbayPRDDU,
+        useYahu,
+        useMercari,
+        useRakuma,
+        useYahuShop,
+        useAmaJP,
+        useAmaUS,
+        useEtsy,
+        useCata
+      };
+      const savedSec = calculateSavedTime(siteFlags);
+
+      // ★ 描画（時間価値付き）
+      renderLinks(links, baseWord, savedSec);
     }
 
     // ボタン押下 → 検索
@@ -523,7 +650,7 @@
       }, 50);
     })();
 
-    function renderLinks(links, keyword) {
+    function renderLinks(links, keyword, savedSec) {
       const resultDiv = document.getElementById("result");
       const resultLinks = document.getElementById("resultLinks");
 
@@ -560,8 +687,17 @@
         <textarea class="copy-area" id="copyArea" readonly>${copyText}</textarea>
       `;
 
+      // ★ リンク一覧の一番下に「時間価値（おまけ）」を追加
+      html += buildValueMessage(savedSec);
+
       resultLinks.innerHTML = html;
       resultDiv.style.display = "block";
+
+      // ★ 検索後に自動スクロール（PC/スマホ）
+      // 結果が描画されてから、なめらかに結果へ
+      requestAnimationFrame(() => {
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
 
       const copyBtn = document.getElementById("copyBtn");
       const copyArea = document.getElementById("copyArea");
