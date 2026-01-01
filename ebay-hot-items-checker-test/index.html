@@ -92,7 +92,7 @@
     <input id="keyword" type="text" placeholder="例：Nikon 50mm F/1.4 Ai-s">
   </div>
 
-  <!-- ✅ 型番/キーワードの下に JPY→USD -->
+  <!-- ✅ JPY→USD（価格レンジはJPYの真下へ移動するので、ここは中心値のみ） -->
   <div class="row2">
     <div>
       <label>JPY：売れ筋の価格（中心値）</label>
@@ -104,12 +104,34 @@
     </div>
   </div>
 
-  <!-- ✅ 状態 / カテゴリー / リサーチ期間（3つ並び） -->
+  <!-- ✅ 売れ筋の価格レンジ（±%）を JPY の真下に配置 -->
+  <div class="row2">
+    <div>
+      <label>売れ筋の価格レンジ（±%）</label>
+      <select id="range">
+        <option value="1">±1%</option>
+        <option value="2">±2%</option>
+        <option value="3">±3%</option>
+        <option value="5">±5%</option>
+        <option value="10" selected>±10%</option>
+        <option value="15">±15%</option>
+        <option value="20">±20%</option>
+        <option value="30">±30%</option>
+        <option value="50">±50%</option>
+        <option value="100">±100%</option>
+      </select>
+    </div>
+    <div></div>
+  </div>
+
+  <!-- ✅ 指定の並び：売れ筋レンジ / 状態 / カテゴリー -->
   <div class="row3">
+    <div style="display:none;"></div>
     <div>
       <label>状態</label>
       <select id="condition">
-        <option value="USED" selected>Used</option>
+        <option value="ALL" selected>All</option>
+        <option value="USED">Used</option>
         <option value="NEW">New</option>
       </select>
     </div>
@@ -133,7 +155,10 @@
         <option value="11724">Camcorders</option>
       </select>
     </div>
+  </div>
 
+  <!-- ✅ 指定の並び：リサーチ期間 / 並び順 / Seller Location -->
+  <div class="row3">
     <div>
       <label>リサーチ期間（Product Research用）</label>
       <select id="dayRange">
@@ -142,21 +167,9 @@
         <option value="180">180日</option>
       </select>
     </div>
-  </div>
-
-  <!-- ✅ Seller Location / 並び順 / 売れ筋レンジ -->
-  <div class="row3">
-    <div>
-      <label>Seller Location</label>
-      <select id="sellerLocation">
-        <option value="ALL" selected>All</option>
-        <option value="JP">Japan</option>
-        <option value="US">United States</option>
-      </select>
-    </div>
 
     <div>
-      <label>並び順（Product Researchのみ）</label>
+      <label>並び順（Product Research用）</label>
       <select id="prSorting">
         <option value="-avgsalesprice" selected>価格高い順</option>
         <option value="-itemssold">Sold多い順</option>
@@ -164,14 +177,11 @@
     </div>
 
     <div>
-      <label>売れ筋の価格レンジ（±%）</label>
-      <select id="range">
-        <option value="2">±2%</option>
-        <option value="5">±5%</option>
-        <option value="10" selected>±10%</option>
-        <option value="15">±15%</option>
-        <option value="20">±20%</option>
-        <option value="25">±25%</option>
+      <label>Seller Location</label>
+      <select id="sellerLocation">
+        <option value="ALL" selected>All</option>
+        <option value="JP">Japan</option>
+        <option value="US">United States</option>
       </select>
     </div>
   </div>
@@ -193,10 +203,6 @@
       <a id="arLink" class="linkish" href="#" target="_blank" rel="noopener noreferrer" onclick="return false;">Advanced Research で見る</a>
       <span class="muted" id="arHint"></span>
     </div>
-  </div>
-
-  <div class="small">
-    ※ Advanced Researchは常に90日相当（期間設定は反映しません）
   </div>
 </div>
 
@@ -246,8 +252,17 @@
     return (Math.abs(r-Math.round(r))<1e-9) ? String(Math.round(r)) : String(r);
   }
   function clamp(n, min, max){ return Math.min(max, Math.max(min, n)); }
-  function conditionIdFromSelect(v){ return v==="NEW" ? "1000" : "3000"; }
-  function conditionTextFromSelect(v){ return v==="NEW" ? "New" : "Used"; }
+
+  function conditionIdFromSelect(v){
+    if (v==="NEW") return "1000";
+    if (v==="USED") return "3000";
+    return null; // ALL
+  }
+  function conditionTextFromSelect(v){
+    if (v==="NEW") return "New";
+    if (v==="USED") return "Used";
+    return "All";
+  }
 
   function sellerLocationText(v){
     if (v==="JP") return "Japan";
@@ -270,7 +285,6 @@
     return (isFinite(fx) && fx > 0) ? fx : 150;
   }
 
-  // JPY優先 → USD の順
   function resolveCenterPrices(){
     const fx = getFx();
     const usdRaw = document.getElementById("priceUsd").value;
@@ -294,7 +308,7 @@
     return {min, max};
   }
 
-  // ✅ Product Research：categoryId / sorting / sellerCountry / conditionId
+  // Product Research：categoryId / sorting / sellerCountry / conditionId
   function buildProductResearchUrl({keyword, minUsd, maxUsd, dayRange, conditionId, sellerLocation, categoryId, sorting}){
     const endDate = Date.now();
     const startDate = endDate - (Number(dayRange) * 24 * 60 * 60 * 1000);
@@ -326,7 +340,7 @@
     return `https://www.ebay.com/sh/research?${params.toString()}`;
   }
 
-  // ✅ Advanced Research：_sacat に categoryId（同じ番号） / _sop=16固定 / locatedin / condition
+  // Advanced Research：_sacat に categoryId / _sop=16固定 / locatedin / condition
   function buildAdvancedResearchUrl({keyword, minJpy, maxJpy, conditionId, sellerLocation, categoryId}){
     const params = new URLSearchParams({
       _nkw: keyword,
@@ -363,6 +377,7 @@
 
   function updateLinks(){
     const keyword = document.getElementById("keyword").value.trim();
+
     const condSel = document.getElementById("condition").value;
     const conditionId = conditionIdFromSelect(condSel);
     const conditionText = conditionTextFromSelect(condSel);
@@ -395,6 +410,9 @@
     const locTxt = sellerLocation !== "ALL" ? ` / ${sellerLocationText(sellerLocation)}` : "";
     const sortTxt = ` / ${sortingText(prSorting)}`;
 
+    // conditionText が All の場合は表示上も「 / All」を出さない（見た目スッキリ）
+    const condTxt = conditionId ? ` / ${conditionText}` : "";
+
     if(prices){
       const mmUsd = calcMinMax(prices.usdCenter, rangePct);
       minUsd=mmUsd.min; maxUsd=mmUsd.max;
@@ -402,11 +420,11 @@
       const mmJpy = calcMinMax(prices.jpyCenter, rangePct);
       minJpy=mmJpy.min; maxJpy=mmJpy.max;
 
-      prHint.textContent = `（${fmtMoneyUsd(minUsd)} - ${fmtMoneyUsd(maxUsd)} / ${dayRange}日 / ${conditionText}${locTxt}${catTxt}${sortTxt}）`;
-      arHint.textContent = `（${fmtMoneyJpy(minJpy)} - ${fmtMoneyJpy(maxJpy)} / 90日固定 / ${conditionText}${locTxt}${catTxt}）`;
+      prHint.textContent = `（${fmtMoneyUsd(minUsd)} - ${fmtMoneyUsd(maxUsd)} / ${dayRange}日${condTxt}${locTxt}${catTxt}${sortTxt}）`;
+      arHint.textContent = `（${fmtMoneyJpy(minJpy)} - ${fmtMoneyJpy(maxJpy)} / 90日固定${condTxt}${locTxt}${catTxt} / 価格高い順固定）`;
     } else {
-      prHint.textContent = `（${dayRange}日 / ${conditionText}${locTxt}${catTxt}${sortTxt}）`;
-      arHint.textContent = `（90日固定 / ${conditionText}${locTxt}${catTxt}）`;
+      prHint.textContent = `（${dayRange}日${condTxt}${locTxt}${catTxt}${sortTxt}）`;
+      arHint.textContent = `（90日固定${condTxt}${locTxt}${catTxt} / 価格高い順固定）`;
     }
 
     const prUrl = buildProductResearchUrl({
@@ -435,6 +453,7 @@
 
   function calculate(){
     const keyword = document.getElementById("keyword").value.trim();
+
     const condSel = document.getElementById("condition").value;
     const conditionText = conditionTextFromSelect(condSel);
     const conditionId = conditionIdFromSelect(condSel);
@@ -541,7 +560,7 @@
     out.push(`状態：${conditionText}`);
     out.push(`Seller Location：${sellerLocationTxt}`);
     out.push(`カテゴリー：${categoryTxt}`);
-    out.push(`並び順：${prSortingTxt}`);
+    out.push(`並び順（Product Research用）：${prSortingTxt}`);
 
     if (usdCenter != null && jpyCenter != null && mmUsd && mmJpy) {
       out.push(`売れ筋の価格（中心値）：${fmtMoneyUsd(usdCenter)} / ${fmtMoneyJpy(jpyCenter)}`);
@@ -608,8 +627,7 @@
     updateLinks();
   }
 
-  // 入力変更でリンク更新
-  ["keyword","condition","category","dayRange","priceUsd","priceJpy","sellerLocation","prSorting","range","fx"].forEach(id=>{
+  ["keyword","priceUsd","priceJpy","range","condition","category","dayRange","prSorting","sellerLocation","fx"].forEach(id=>{
     const el = document.getElementById(id);
     el.addEventListener("input", updateLinks);
     el.addEventListener("change", updateLinks);
