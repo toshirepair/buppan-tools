@@ -467,23 +467,23 @@
 <script>
 (() => {
   const SK = {
-    market: "blc_market_v22",
-    active: "blc_active_v22",
-    amount: "blc_amount_v22",
-    profit: "blc_profit_v22",
-    usdJpy: "blc_usdJpy_v22",
-    eurJpy: "blc_eurJpy_v22",
-    tax: "blc_tax_v22",
-    purchase: "blc_purchase_v22",
-    feeAdjust: "blc_feeAdjust_v22",
-    bill: "blc_billShipTax_v22",
-    includeBill: "blc_includeBillInFee_v22",
-    aShip: "blc_actualShip_v22",
-    aDutyPct: "blc_actualDutyPct_v22",
-    dutyUseCostBase: "blc_dutyUseCostBase_v22",
-    cProfit: "blc_collapse_profit_v22",
-    cFx: "blc_collapse_fx_v22",
-    cRes: "blc_collapse_res_v22",
+    market: "blc_market_v23",
+    active: "blc_active_v23",
+    amount: "blc_amount_v23",
+    profit: "blc_profit_v23",
+    usdJpy: "blc_usdJpy_v23",
+    eurJpy: "blc_eurJpy_v23",
+    tax: "blc_tax_v23",
+    purchase: "blc_purchase_v23",
+    feeAdjust: "blc_feeAdjust_v23",
+    bill: "blc_billShipTax_v23",
+    includeBill: "blc_includeBillInFee_v23",
+    aShip: "blc_actualShip_v23",
+    aDutyPct: "blc_actualDutyPct_v23",
+    dutyUseCostBase: "blc_dutyUseCostBase_v23",
+    cProfit: "blc_collapse_profit_v23",
+    cFx: "blc_collapse_fx_v23",
+    cRes: "blc_collapse_res_v23",
   };
 
   const $ = (id) => document.getElementById(id);
@@ -584,40 +584,32 @@
     (m === "quickdo" ? "QuickDo：段階手数料" :
     "ヤフオク・メルカリ：10%"));
 
-  // QuickDo：商品代(JPY)→ { feeJpy, tierText }
+  // QuickDo：商品代(JPY)→ { feeJpy, pctText, rangeText }
   const quickDoFeeInfo = (itemJpy) => {
-    if (!isFinite(itemJpy) || itemJpy <= 0) return { feeJpy: NaN, tierText: "" };
+    if (!isFinite(itemJpy) || itemJpy <= 0) return { feeJpy: NaN, pctText: "", rangeText: "" };
 
-    // 1円～4,999円：1300円 + 7%
     if (itemJpy <= 4999) {
-      return { feeJpy: 1300 + itemJpy * 0.07, tierText: "1円～4,999円 1300円＋7%" };
+      return { feeJpy: 1300 + itemJpy * 0.07, pctText: "1300円＋7%", rangeText: "1円～4,999円" };
     }
-    // 5,000円～9,999円：35%
     if (itemJpy <= 9999) {
-      return { feeJpy: itemJpy * 0.35, tierText: "5,000円～9,999円 35%" };
+      return { feeJpy: itemJpy * 0.35, pctText: "35%", rangeText: "5,000円～9,999円" };
     }
-    // 10,000円～19,999円：25%
     if (itemJpy <= 19999) {
-      return { feeJpy: itemJpy * 0.25, tierText: "10,000円～19,999円 25%" };
+      return { feeJpy: itemJpy * 0.25, pctText: "25%", rangeText: "10,000円～19,999円" };
     }
-    // 20,000円～49,999円：18%
     if (itemJpy <= 49999) {
-      return { feeJpy: itemJpy * 0.18, tierText: "20,000円～49,999円 18%" };
+      return { feeJpy: itemJpy * 0.18, pctText: "18%", rangeText: "20,000円～49,999円" };
     }
-    // 50,000円～99,999円：12%
     if (itemJpy <= 99999) {
-      return { feeJpy: itemJpy * 0.12, tierText: "50,000円～99,999円 12%" };
+      return { feeJpy: itemJpy * 0.12, pctText: "12%", rangeText: "50,000円～99,999円" };
     }
-    // 100,000円～199,999円：10%
     if (itemJpy <= 199999) {
-      return { feeJpy: itemJpy * 0.10, tierText: "100,000円～199,999円 10%" };
+      return { feeJpy: itemJpy * 0.10, pctText: "10%", rangeText: "100,000円～199,999円" };
     }
-    // 200,000円～499,999円：9%
     if (itemJpy <= 499999) {
-      return { feeJpy: itemJpy * 0.09, tierText: "200,000円～499,999円 9%" };
+      return { feeJpy: itemJpy * 0.09, pctText: "9%", rangeText: "200,000円～499,999円" };
     }
-    // 500,000円～：8%
-    return { feeJpy: itemJpy * 0.08, tierText: "500,000円～ 8%" };
+    return { feeJpy: itemJpy * 0.08, pctText: "8%", rangeText: "500,000円～" };
   };
 
   const focusTo = (el) => {
@@ -633,6 +625,7 @@
   const autoCurrencyByMarket = (m) => {
     if (m === "catawiki") return "EUR";
     if (m === "quickdo") return "JPY";
+    if (m === "domestic") return "JPY";
     return "JPY";
   };
 
@@ -645,9 +638,9 @@
     if (focusAmount) focusTo(amountEl);
   };
 
-  // QuickDoのときはJPY固定（USD/EURチップ無効）
+  // QuickDo/国内はJPY固定（USD/EURチップ無効）
   const updateCurrencyLock = (m) => {
-    const lockJPY = (m === "quickdo");
+    const lockJPY = (m === "quickdo" || m === "domestic");
     chips.forEach(btn => {
       const isJPY = btn.dataset.cur === "JPY";
       btn.disabled = lockJPY ? !isJPY : false;
@@ -721,28 +714,25 @@
     setSoft(eurEl);
 
     const m = marketEl.value;
-
-    // ===== QuickDo指定時：指定項目を無効化（設定できない状態へ） =====
     const isQD = (m === "quickdo");
+    const isDom = (m === "domestic");
 
-    // 「商品代に含める」は意味がないので無効化
+    // ---- JPY固定（QuickDo + 国内） ----
+    updateCurrencyLock(m);
+
+    // ---- QuickDo：多数項目を無効化（前回仕様維持） ----
     setDisabled(includeBillEl, isQD, {resetChecked:false});
-
-    // 手数料調整（%） 無効化（既存仕様）
     setDisabled(feeAdjustEl, isQD, {resetValue:""});
-
-    // ①依頼：請求：送料・関税 / 実費送料 / 実費関税 を無効化
     setDisabled(billEl, isQD, {resetValue:0});
     setDisabled(actualShipEl, isQD, {resetValue:0});
     setDisabled(actualDutyPctEl, isQD, {resetValue:""});
     setDisabled(dutyUseCostBaseEl, isQD, {resetChecked:false});
-
-    // 表示専用も念のためクリア
     if (isQD) actualDutyJpyViewEl.value = "";
 
-    // 通貨ロック反映
-    updateCurrencyLock(m);
-    // ================================================================
+    // ---- 国内（ヤフオク・メルカリ）：実費関税(%) と 仕入れ価格基準 を無効化（他は有効）----
+    setDisabled(actualDutyPctEl, isDom, {resetValue:""});
+    setDisabled(dutyUseCostBaseEl, isDom, {resetChecked:false});
+    if (isDom) actualDutyJpyViewEl.value = "";
 
     const amt = parseNum(amountEl.value);
 
@@ -803,14 +793,13 @@
     let feeJpy = NaN;
     let feeNote = "";
     let feeBaseLabel = "商品代のみ";
-    let qdTierText = ""; // コピーにも使う
 
     if (m === "quickdo") {
       const info = quickDoFeeInfo(itemJpy);
       feeJpy = info.feeJpy;
-      qdTierText = info.tierText;
-      // ②依頼：表記を「QuickDo：◯◯円～◯◯円 ◯% / 商品代のみ」に変更
-      feeNote = `QuickDo：${qdTierText} / 商品代のみ`;
+      // 表記変更：%（または1300円+7%）を先に、価格帯を「」で括る
+      // 例）18% 「20,000円～49,999円」
+      feeNote = `QuickDo：${info.pctText} 「${info.rangeText}」 / 商品代のみ`;
     } else {
       const base = baseRate(m);
       const adj = (isFinite(feeAdjPct) ? feeAdjPct : 0) / 100;
@@ -859,7 +848,6 @@
     rDate.textContent = nowDate();
 
     // 入札上限（利益必須）
-    // QuickDoで実費関税(%)を無効化しているので、dutyPctは常に0として扱われます（入力不可）
     const dutyPct = isFinite(dutyPctRaw) ? dutyPctRaw : 0;
     const t = Math.max(0, dutyPct) / 100;
 
@@ -877,7 +865,8 @@
       errMsg.textContent = "利益（JPY）を入力してください（入札上限を表示するために必要です）。";
     }
 
-    // 実費関税（JPY）表示：QuickDoは入力不可なので0表示
+    // 実費関税（JPY）表示
+    // domesticで dutyPct は無効化されるので 0 扱いになります
     let dutyBase = itemJpy;
     let dutyBaseLabel = "売価";
     const hasPurchase = (isFinite(purchase) && purchase > 0);
@@ -901,7 +890,7 @@
       ? `${fmtJPY(actualDutyJpy)}（${dutyBaseText}）`
       : (dutyPct !== 0 ? `—（${dutyBaseText}）` : fmtJPY(0));
 
-    // 差益（QuickDoは請求入力不可＝0なので基本表示されない）
+    // 差益
     if (isFinite(billJpy) && billJpy > 0) {
       const aDuty = isFinite(actualDutyJpy) ? actualDutyJpy : 0;
       const delta = billJpy - (actualShip + aDuty);
@@ -943,7 +932,7 @@
       rRefund.textContent = `${fmtJPY(refund)}（手数料＋仕入の10%）`;
     }
 
-    // コピー用テキスト
+    // コピー用テキスト（手数料表記も同様に反映）
     const copyLines = [];
     copyLines.push("Bid Limit Calculator");
     copyLines.push(`販売先　${marketLabel(m)}`);
@@ -1135,8 +1124,7 @@
 
     updateCurrencyLock(marketEl.value);
 
-    // QuickDoなら通貨は必ずJPY
-    if (marketEl.value === "quickdo") active = "JPY";
+    if (marketEl.value === "quickdo" || marketEl.value === "domestic") active = "JPY";
     chips.forEach(c => c.classList.toggle("active", c.dataset.cur === active));
     amountPrefix.textContent = sym(active);
   };
