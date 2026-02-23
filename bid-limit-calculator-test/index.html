@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="ja">
 <head>
@@ -79,6 +80,10 @@
     background:#111;
     color:#fff;
     border-color:#111;
+  }
+  button.chip:disabled{
+    opacity:.45;
+    cursor:not-allowed;
   }
 
   .moneyWrap{
@@ -289,6 +294,7 @@
           <option value="ebay">eBay</option>
           <option value="catawiki">catawiki</option>
           <option value="domestic">ヤフオク・メルカリ</option>
+          <option value="quickdo">QuickDo（クイックドゥ）</option>
         </select>
       </div>
 
@@ -467,23 +473,23 @@
 <script>
 (() => {
   const SK = {
-    market: "blc_market_v20",
-    active: "blc_active_v20",
-    amount: "blc_amount_v20",
-    profit: "blc_profit_v20",
-    usdJpy: "blc_usdJpy_v20",
-    eurJpy: "blc_eurJpy_v20",
-    tax: "blc_tax_v20",
-    purchase: "blc_purchase_v20",
-    feeAdjust: "blc_feeAdjust_v20",
-    bill: "blc_billShipTax_v20",
-    includeBill: "blc_includeBillInFee_v20",
-    aShip: "blc_actualShip_v20",
-    aDutyPct: "blc_actualDutyPct_v20",
-    dutyUseCostBase: "blc_dutyUseCostBase_v20",
-    cProfit: "blc_collapse_profit_v20",
-    cFx: "blc_collapse_fx_v20",
-    cRes: "blc_collapse_res_v20",
+    market: "blc_market_v21",
+    active: "blc_active_v21",
+    amount: "blc_amount_v21",
+    profit: "blc_profit_v21",
+    usdJpy: "blc_usdJpy_v21",
+    eurJpy: "blc_eurJpy_v21",
+    tax: "blc_tax_v21",
+    purchase: "blc_purchase_v21",
+    feeAdjust: "blc_feeAdjust_v21",
+    bill: "blc_billShipTax_v21",
+    includeBill: "blc_includeBillInFee_v21",
+    aShip: "blc_actualShip_v21",
+    aDutyPct: "blc_actualDutyPct_v21",
+    dutyUseCostBase: "blc_dutyUseCostBase_v21",
+    cProfit: "blc_collapse_profit_v21",
+    cFx: "blc_collapse_fx_v21",
+    cRes: "blc_collapse_res_v21",
   };
 
   const $ = (id) => document.getElementById(id);
@@ -566,9 +572,53 @@
   const fmtHintJPY = (n) => isFinite(n) ? `¥${Math.round(n).toLocaleString()}` : `¥—`;
 
   const nowDate = () => new Date().toLocaleDateString("sv-SE");
-  const marketLabel = (m) => m === "ebay" ? "ebay" : (m === "catawiki" ? "catawiki" : "ヤフオク・メルカリ");
-  const baseRate = (m) => m === "ebay" ? (0.15+0.02) : (m === "catawiki" ? (0.125+0.02) : 0.10);
-  const baseNote = (m) => m === "ebay" ? "eBay：15% + Payoneer：2%" : (m === "catawiki" ? "Catawiki：12.5% + Payoneer：2%" : "ヤフオク・メルカリ：10%");
+
+  const marketLabel = (m) =>
+    m === "ebay" ? "ebay" :
+    (m === "catawiki" ? "catawiki" :
+    (m === "quickdo" ? "QuickDo" :
+    "ヤフオク・メルカリ"));
+
+  // 通常マーケットのベース手数料（QuickDoは別計算なので0でOK）
+  const baseRate = (m) =>
+    m === "ebay" ? (0.15+0.02) :
+    (m === "catawiki" ? (0.125+0.02) :
+    (m === "quickdo" ? 0 : 0.10));
+
+  const baseNote = (m) =>
+    m === "ebay" ? "eBay：15% + Payoneer：2%" :
+    (m === "catawiki" ? "Catawiki：12.5% + Payoneer：2%" :
+    (m === "quickdo" ? "QuickDo：段階手数料" :
+    "ヤフオク・メルカリ：10%"));
+
+  // QuickDo手数料：商品代(JPY)→手数料(JPY)
+  const quickDoFeeJpy = (itemJpy) => {
+    if (!isFinite(itemJpy) || itemJpy <= 0) return NaN;
+
+    // 1円～4,999円：1300円 + 7%
+    if (itemJpy <= 4999) return 1300 + itemJpy * 0.07;
+
+    // 5,000円～9,999円：35%
+    if (itemJpy <= 9999) return itemJpy * 0.35;
+
+    // 10,000円～19,999円：25%
+    if (itemJpy <= 19999) return itemJpy * 0.25;
+
+    // 20,000円～49,999円：18%
+    if (itemJpy <= 49999) return itemJpy * 0.18;
+
+    // 50,000円～99,999円：12%
+    if (itemJpy <= 99999) return itemJpy * 0.12;
+
+    // 100,000円～199,999円：10%
+    if (itemJpy <= 199999) return itemJpy * 0.10;
+
+    // 200,000円～499,999円：9%
+    if (itemJpy <= 499999) return itemJpy * 0.09;
+
+    // 500,000円～：8%
+    return itemJpy * 0.08;
+  };
 
   const focusTo = (el) => {
     if (!el) return;
@@ -579,7 +629,12 @@
   };
 
   let active = "JPY";
-  const autoCurrencyByMarket = (m) => (m === "catawiki") ? "EUR" : "JPY";
+
+  const autoCurrencyByMarket = (m) => {
+    if (m === "catawiki") return "EUR";
+    if (m === "quickdo") return "JPY";
+    return "JPY";
+  };
 
   const setActive = (cur, {focusAmount=false}={}) => {
     active = cur;
@@ -590,9 +645,20 @@
     if (focusAmount) focusTo(amountEl);
   };
 
+  // QuickDoのときはJPY固定（USD/EURチップ無効）
+  const updateCurrencyLock = (m) => {
+    const lockJPY = (m === "quickdo");
+    chips.forEach(btn => {
+      const isJPY = btn.dataset.cur === "JPY";
+      btn.disabled = lockJPY ? !isJPY : false;
+    });
+    if (lockJPY && active !== "JPY") setActive("JPY");
+  };
+
   const updateFxHint = (amount, cur, usdJpy, eurJpy) => {
     if (!isFinite(amount) || amount <= 0) { fxHintEl.textContent = ""; return; }
 
+    // QuickDo（JPY固定）の場合も同じ表示でOKだが、JPYなら為替不要なのでそのまま
     let jpy = NaN;
     if (cur === "JPY") jpy = amount;
     if (cur === "USD" && isFinite(usdJpy) && usdJpy > 0) jpy = amount * usdJpy;
@@ -647,6 +713,22 @@
     setSoft(eurEl);
 
     const m = marketEl.value;
+
+    // UI事故防止：QuickDoは「請求を手数料に含める」を無効化（手数料ベースは商品代のみ）
+    if (m === "quickdo") {
+      includeBillEl.checked = false;
+      includeBillEl.disabled = true;
+      // 手数料調整（広告費など）はQuickDoでは概念が異なる前提で無効化（必要なら外してOK）
+      feeAdjustEl.value = "";
+      feeAdjustEl.disabled = true;
+    } else {
+      includeBillEl.disabled = false;
+      feeAdjustEl.disabled = false;
+    }
+
+    // 通貨ロック反映
+    updateCurrencyLock(m);
+
     const amt = parseNum(amountEl.value);
 
     const usdJpy = parseNum(usdEl.value);
@@ -702,26 +784,45 @@
     const billJpy = isFinite(billShipTax) ? billShipTax : 0;
     const totalRevenueJpy = itemJpy + billJpy;
 
-    const base = baseRate(m);
-    const adj = (isFinite(feeAdjPct) ? feeAdjPct : 0) / 100;
-    const feeRate = Math.max(0, base + adj);
-
-    let feeBaseJpy = itemJpy;
+    // ---- 手数料計算（QuickDoは段階制・商品代のみ） ----
+    let feeJpy = NaN;
+    let feeNote = "";
     let feeBaseLabel = "商品代のみ";
-    if (m === "ebay") {
-      feeBaseJpy = totalRevenueJpy;
-      feeBaseLabel = "総売上";
-    } else {
-      if (includeBillInFee) {
-        feeBaseJpy = totalRevenueJpy;
-        feeBaseLabel = "商品代＋請求送料・関税";
-      } else {
-        feeBaseJpy = itemJpy;
-        feeBaseLabel = "商品代のみ";
-      }
-    }
 
-    const feeJpy = feeBaseJpy * feeRate;
+    if (m === "quickdo") {
+      feeJpy = quickDoFeeJpy(itemJpy); // ← 商品代のみ
+      feeNote = "QuickDo：売価（商品代）に応じた段階手数料 / 商品代のみ";
+    } else {
+      const base = baseRate(m);
+      const adj = (isFinite(feeAdjPct) ? feeAdjPct : 0) / 100;
+      const feeRate = Math.max(0, base + adj);
+
+      let feeBaseJpy = itemJpy;
+      feeBaseLabel = "商品代のみ";
+
+      if (m === "ebay") {
+        feeBaseJpy = totalRevenueJpy;
+        feeBaseLabel = "総売上";
+      } else {
+        if (includeBillInFee) {
+          feeBaseJpy = totalRevenueJpy;
+          feeBaseLabel = "商品代＋請求送料・関税";
+        } else {
+          feeBaseJpy = itemJpy;
+          feeBaseLabel = "商品代のみ";
+        }
+      }
+
+      feeJpy = feeBaseJpy * feeRate;
+
+      const baseN = baseNote(m);
+      const feeNoteRate = (!isFinite(feeAdjPct) || feeAdjPct === 0)
+        ? baseN
+        : `${baseN}  + 調整：${feeAdjPct}%`;
+      feeNote = `${feeNoteRate} / ${feeBaseLabel}`;
+    }
+    // ---- ここまで ----
+
     const payoutJpy = totalRevenueJpy - feeJpy;
 
     const rateText =
@@ -729,12 +830,6 @@
       (active === "EUR") ? `（1 EUR = ${eurJpy} JPY）` : "";
 
     const priceLine = `${fmtCur(active, amt)} → ${fmtJPY(itemJpy)} ${rateText}`.trim();
-
-    const baseN = baseNote(m);
-    const feeNoteRate = (!isFinite(feeAdjPct) || feeAdjPct === 0)
-      ? baseN
-      : `${baseN}  + 調整：${feeAdjPct}%`;
-    const feeNote = `${feeNoteRate} / ${feeBaseLabel}`;
 
     rMarket.textContent = marketLabel(m);
     rGross.textContent = priceLine;
@@ -819,7 +914,7 @@
     const profitRate = (isFinite(profitVal) && itemJpy > 0) ? (profitVal / itemJpy) * 100 : NaN;
     rProfitRate.textContent = isFinite(profitRate) ? `${profitRate.toFixed(1)}%` : "—";
 
-    // 還付金（ebay/catawikiのみ。通貨は関係なく表示）
+    // 還付金（ebay/catawikiのみ。QuickDo/domesticは表示しない）
     const isOverseas = (m === "ebay" || m === "catawiki");
     rRefundRow.style.display = "none";
     if (isOverseas && isFinite(costVal)) {
@@ -906,10 +1001,15 @@
   };
 
   // イベント
-  chips.forEach(btn => btn.addEventListener("click", () => setActive(btn.dataset.cur, {focusAmount:true})));
+  chips.forEach(btn => btn.addEventListener("click", () => {
+    if (btn.disabled) return;
+    setActive(btn.dataset.cur, {focusAmount:true});
+  }));
 
   marketEl.addEventListener("change", () => {
-    setActive(autoCurrencyByMarket(marketEl.value), {focusAmount:true});
+    const nextCur = autoCurrencyByMarket(marketEl.value);
+    setActive(nextCur, {focusAmount:true});
+    updateCurrencyLock(marketEl.value);
   });
 
   // 入力時は計算のみ（入力途中で飛ばない）
@@ -1013,6 +1113,13 @@
     setSoft(profitEl);
     setSoft(usdEl);
     setSoft(eurEl);
+
+    // ロック反映
+    updateCurrencyLock(marketEl.value);
+    // QuickDoなら通貨は必ずJPYに寄せる
+    if (marketEl.value === "quickdo") active = "JPY";
+    chips.forEach(c => c.classList.toggle("active", c.dataset.cur === active));
+    amountPrefix.textContent = sym(active);
   };
 
   restore();
@@ -1021,3 +1128,4 @@
 </script>
 </body>
 </html>
+```
