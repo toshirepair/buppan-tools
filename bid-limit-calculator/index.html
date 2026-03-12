@@ -33,6 +33,7 @@
   .k{ font-size:.85rem; color:#666; }
   .kbold{ font-size:.9rem; color:#333; font-weight:800; }
   .small{ font-size:.82rem; color:#777; margin-top:6px; line-height:1.35; }
+  .warn{ color:#b91c1c; }
 
   .grid2Always{
     display:grid;
@@ -50,7 +51,6 @@
     background:#fff;
   }
 
-  /* 必須入力（未入力）は薄グレー → 入力したら白 */
   .softInput{
     background:#f1f1f1;
     transition: background .15s ease;
@@ -61,7 +61,6 @@
     display:flex;
     gap:8px;
     flex-wrap:nowrap;
-    overflow:hidden;
     margin-top:4px;
   }
   button.chip{
@@ -78,6 +77,10 @@
     background:#111;
     color:#fff;
     border-color:#111;
+  }
+  button.chip:disabled{
+    opacity:.45;
+    cursor:not-allowed;
   }
 
   .moneyWrap{
@@ -98,6 +101,7 @@
     min-width:44px;
     text-align:center;
     font-weight:600;
+    flex:0 0 auto;
   }
   .moneyInput{
     border:0;
@@ -107,7 +111,6 @@
     font-size:1rem;
     background:#fff;
   }
-  /* 売価も必須として薄グレー運用 */
   .moneyInput.softInput{ background:#f1f1f1; }
   .moneyInput.softInput.filled{ background:#fff; }
 
@@ -157,15 +160,13 @@
   }
   .line .l{ color:#444; }
   .line .r{ font-weight:600; }
-  .warn{ color:#b91c1c; }
 
-  /* ③を閉じた時に「分厚く見える」原因を潰す：ヘッダーの行高を固定＆右ボタン小型化 */
   .cardHeader{
     display:flex;
-    align-items:center;          /* ← centerで高さが揃う */
+    align-items:center;
     justify-content:space-between;
     gap:10px;
-    min-height:28px;            /* ← 折りたたみ時の基準高さ */
+    min-height:28px;
   }
   .headerLeft{
     display:flex;
@@ -177,7 +178,7 @@
     display:flex;
     align-items:center;
     gap:8px;
-    flex-wrap:nowrap;           /* ← 折りたたみ時に縦に伸びにくい */
+    flex-wrap:nowrap;
   }
 
   .foldBtn{
@@ -188,7 +189,7 @@
     cursor:pointer;
     font-size:.9rem;
     line-height:1;
-    height:28px;                /* ← 高さを固定して揃える */
+    height:28px;
     min-width:34px;
   }
   .foldBtn:active{ opacity:.8; }
@@ -198,17 +199,16 @@
     border:1px solid #ccc;
     background:#fff;
     border-radius:10px;
-    padding:6px 10px;          /* ← 小さく */
+    padding:6px 10px;
     cursor:pointer;
     text-decoration:none;
     display:inline-flex;
     align-items:center;
     color:#111;
-    font-size:.85rem;          /* ← 小さく */
-    height:28px;               /* ← foldBtnと同じ高さに */
+    font-size:.85rem;
+    height:28px;
     white-space:nowrap;
   }
-  .linkBtn:active{ opacity:.8; }
 
   .sectionTitle{
     font-weight:700;
@@ -226,7 +226,40 @@
     cursor:pointer;
     user-select:none;
   }
-  .clearLink:active{ opacity:.7; }
+
+  .inlineCheckRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:8px;
+    flex-wrap:wrap;
+  }
+  .inlineCheckRow .left{ flex:1 1 260px; min-width:240px; }
+  .inlineCheckRow .right{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    white-space:nowrap;
+    flex:0 0 auto;
+  }
+  .miniLabel{ font-size:.85rem; color:#444; }
+  .miniHint{ font-size:.78rem; color:#888; margin-top:4px; }
+
+  .inlineMiniCheck{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:8px;
+    flex-wrap:wrap;
+  }
+  .inlineMiniCheck .right{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    white-space:nowrap;
+  }
 </style>
 </head>
 <body>
@@ -255,6 +288,7 @@
           <option value="ebay">eBay</option>
           <option value="catawiki">catawiki</option>
           <option value="domestic">ヤフオク・メルカリ</option>
+          <option value="quickdo">QuickDo（クイックドゥ）</option>
         </select>
       </div>
 
@@ -301,22 +335,57 @@
           <input id="profit" class="input softInput" inputmode="decimal" enterkeyhint="next" placeholder="例：10000">
         </div>
         <div>
-          <div class="k">送料・関税（JPY）</div>
-          <input id="ship" class="input" inputmode="decimal" value="0">
-          <div class="small">※商品代に送料・関税を含む時に入力する</div>
+          <div class="k">仕入れ価格（JPY）</div>
+          <input id="purchase" class="input" inputmode="decimal" placeholder="例：5000">
+          <div class="small">※計算結果のみ仕入固定（入札上限には影響しません）</div>
+        </div>
+      </div>
+
+      <div class="inlineCheckRow">
+        <div class="left">
+          <div class="k">請求：送料・関税（JPY）</div>
+          <input id="billShipTax" class="input" inputmode="decimal" value="0">
+          <div class="miniHint">※お客さんに請求する金額（売上に＋）</div>
+        </div>
+        <div class="right">
+          <label class="miniLabel">
+            <input type="checkbox" id="includeBillInFee">
+            商品代に含める
+          </label>
         </div>
       </div>
 
       <div class="grid2Always" style="margin-top:10px;">
         <div>
-          <div class="k">仕入れ価格（JPY）</div>
-          <input id="purchase" class="input" inputmode="decimal" placeholder="例：5000">
-          <div class="small">※計算結果のみ仕入固定（入札上限には影響しません）</div>
+          <div class="k">実費送料（JPY）</div>
+          <input id="actualShip" class="input" inputmode="decimal" value="0">
+          <div class="small">※セラー負担コスト</div>
         </div>
+        <div>
+          <div class="k">実費関税（%）</div>
+          <input id="actualDutyPct" class="input" inputmode="decimal" placeholder="例：3">
+          <div class="inlineMiniCheck">
+            <div></div>
+            <div class="right">
+              <label class="miniLabel">
+                <input type="checkbox" id="dutyUseCostBase">
+                仕入れ価格基準
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2Always" style="margin-top:10px;">
         <div>
           <div class="k">手数料調整（%）※広告費など</div>
           <input id="feeAdjust" class="input" inputmode="decimal" placeholder="例：3 / -3">
           <div class="small">※「3」= +3%、「-3」= -3%</div>
+        </div>
+        <div>
+          <div class="k">（参考）実費関税（JPY）</div>
+          <input id="actualDutyJpyView" class="input" disabled placeholder="自動算出">
+          <div class="small">※表示用（編集不可）</div>
         </div>
       </div>
 
@@ -363,10 +432,18 @@
     <div class="foldBody" id="bodyResult">
       <div class="breakdown" style="border-top:none; padding-top:6px;">
         <div class="line"><div class="l">販売先</div><div class="r" id="rMarket">—</div></div>
-        <div class="line"><div class="l">売価</div><div class="r" id="rGross">—</div></div>
+        <div class="line"><div class="l">売価（商品代）</div><div class="r" id="rGross">—</div></div>
+        <div class="line"><div class="l">請求：送料・関税</div><div class="r" id="rBill">—</div></div>
+
         <div class="line"><div class="l">手数料</div><div class="r" id="rFee">—</div></div>
         <div class="line"><div class="l">入金額</div><div class="r" id="rPayout">—</div></div>
-        <div class="line"><div class="l">送料・関税</div><div class="r" id="rShip">—</div></div>
+
+        <div class="line"><div class="l">実費送料</div><div class="r" id="rActualShip">—</div></div>
+        <div class="line"><div class="l">実費関税</div><div class="r" id="rActualDuty">—</div></div>
+
+        <div class="line" id="rDeltaRow" style="display:none;">
+          <div class="l">送料・関税差益</div><div class="r" id="rDelta">—</div>
+        </div>
 
         <div class="line"><div class="l" id="rCostLabel">仕入（入札上限）</div><div class="r" id="rCost">—</div></div>
 
@@ -390,65 +467,82 @@
 <script>
 (() => {
   const SK = {
-    market: "blc_market_v17",
-    active: "blc_active_v17",
-    amount: "blc_amount_v17",
-    profit: "blc_profit_v17",
-    ship: "blc_ship_v17",
-    usdJpy: "blc_usdJpy_v17",
-    eurJpy: "blc_eurJpy_v17",
-    tax: "blc_tax_v17",
-    purchase: "blc_purchase_v17",
-    feeAdjust: "blc_feeAdjust_v17",
-    cProfit: "blc_collapse_profit_v17",
-    cFx: "blc_collapse_fx_v17",
-    cRes: "blc_collapse_res_v17",
+    market: "blc_market_v23",
+    active: "blc_active_v23",
+    amount: "blc_amount_v23",
+    profit: "blc_profit_v23",
+    usdJpy: "blc_usdJpy_v23",
+    eurJpy: "blc_eurJpy_v23",
+    tax: "blc_tax_v23",
+    purchase: "blc_purchase_v23",
+    feeAdjust: "blc_feeAdjust_v23",
+    bill: "blc_billShipTax_v23",
+    includeBill: "blc_includeBillInFee_v23",
+    aShip: "blc_actualShip_v23",
+    aDutyPct: "blc_actualDutyPct_v23",
+    dutyUseCostBase: "blc_dutyUseCostBase_v23",
+    cProfit: "blc_collapse_profit_v23",
+    cFx: "blc_collapse_fx_v23",
+    cRes: "blc_collapse_res_v23",
   };
 
-  const marketEl = document.getElementById("market");
+  const $ = (id) => document.getElementById(id);
+
+  const marketEl = $("market");
   const chips = [...document.querySelectorAll(".chip")];
-  const amountPrefix = document.getElementById("amountPrefix");
-  const amountEl = document.getElementById("amount");
-  const clearAmountEl = document.getElementById("clearAmount");
-  const fxHintEl = document.getElementById("fxHint");
+  const amountPrefix = $("amountPrefix");
+  const amountEl = $("amount");
+  const clearAmountEl = $("clearAmount");
+  const fxHintEl = $("fxHint");
 
-  const taxEl = document.getElementById("taxCheck");
-  const profitEl = document.getElementById("profit");
-  const shipEl = document.getElementById("ship");
-  const purchaseEl = document.getElementById("purchase");
-  const feeAdjustEl = document.getElementById("feeAdjust");
+  const taxEl = $("taxCheck");
+  const profitEl = $("profit");
+  const purchaseEl = $("purchase");
+  const feeAdjustEl = $("feeAdjust");
 
-  const usdEl = document.getElementById("usdJpy");
-  const eurEl = document.getElementById("eurJpy");
+  const billEl = $("billShipTax");
+  const includeBillEl = $("includeBillInFee");
 
-  const tProfit = document.getElementById("toggleProfit");
-  const bProfit = document.getElementById("bodyProfit");
-  const tFx = document.getElementById("toggleFx");
-  const bFx = document.getElementById("bodyFx");
-  const tRes = document.getElementById("toggleResult");
-  const bRes = document.getElementById("bodyResult");
+  const actualShipEl = $("actualShip");
+  const actualDutyPctEl = $("actualDutyPct");
+  const dutyUseCostBaseEl = $("dutyUseCostBase");
+  const actualDutyJpyViewEl = $("actualDutyJpyView");
 
-  const bidTopWrap = document.getElementById("bidLimitTopWrap");
-  const bidTop = document.getElementById("bidLimitTop");
-  const bidProfitHint = document.getElementById("bidProfitHint");
-  const copyMsgTop = document.getElementById("copyMsgTop");
+  const usdEl = $("usdJpy");
+  const eurEl = $("eurJpy");
 
-  const rMarket = document.getElementById("rMarket");
-  const rGross = document.getElementById("rGross");
-  const rFee = document.getElementById("rFee");
-  const rPayout = document.getElementById("rPayout");
-  const rShip = document.getElementById("rShip");
-  const rCostLabel = document.getElementById("rCostLabel");
-  const rCost = document.getElementById("rCost");
-  const rProfit = document.getElementById("rProfit");
-  const rProfitRate = document.getElementById("rProfitRate");
-  const rRefundRow = document.getElementById("rRefundRow");
-  const rRefund = document.getElementById("rRefund");
-  const rDate = document.getElementById("rDate");
+  const tProfit = $("toggleProfit");
+  const bProfit = $("bodyProfit");
+  const tFx = $("toggleFx");
+  const bFx = $("bodyFx");
+  const tRes = $("toggleResult");
+  const bRes = $("bodyResult");
 
-  const errMsg = document.getElementById("errMsg");
-  const copyAllBtn = document.getElementById("copyAllBtn");
-  const copyAllMsg = document.getElementById("copyAllMsg");
+  const bidTopWrap = $("bidLimitTopWrap");
+  const bidTop = $("bidLimitTop");
+  const bidProfitHint = $("bidProfitHint");
+  const copyMsgTop = $("copyMsgTop");
+
+  const rMarket = $("rMarket");
+  const rGross = $("rGross");
+  const rBill = $("rBill");
+  const rFee = $("rFee");
+  const rPayout = $("rPayout");
+  const rActualShip = $("rActualShip");
+  const rActualDuty = $("rActualDuty");
+  const rDeltaRow = $("rDeltaRow");
+  const rDelta = $("rDelta");
+  const rCostLabel = $("rCostLabel");
+  const rCost = $("rCost");
+  const rProfit = $("rProfit");
+  const rProfitRate = $("rProfitRate");
+  const rRefundRow = $("rRefundRow");
+  const rRefund = $("rRefund");
+  const rDate = $("rDate");
+
+  const errMsg = $("errMsg");
+  const copyAllBtn = $("copyAllBtn");
+  const copyAllMsg = $("copyAllMsg");
 
   const parseNum = (v) => {
     const s = String(v ?? "").replace(/[¥$€,\s]/g,"").replace(/[^\d.-]/g,"");
@@ -456,6 +550,7 @@
   };
   const isEmpty = (el) => String(el.value ?? "").trim() === "";
   const setSoft = (el) => el.classList.toggle("filled", !isEmpty(el));
+  const isUnfilledSoft = (el) => el && el.classList.contains("softInput") && !el.classList.contains("filled");
 
   const fmtJPY = (n) => isFinite(n) ? ("¥" + Math.round(n).toLocaleString()) : "—";
   const fmtCur = (cur, n) => {
@@ -472,9 +567,50 @@
 
   const nowDate = () => new Date().toLocaleDateString("sv-SE");
 
-  const marketLabel = (m) => m === "ebay" ? "ebay" : (m === "catawiki" ? "catawiki" : "ヤフオク・メルカリ");
-  const baseRate = (m) => m === "ebay" ? (0.15+0.02) : (m === "catawiki" ? (0.125+0.02) : 0.10);
-  const baseNote = (m) => m === "ebay" ? "eBay：15% + Payoneer：2%" : (m === "catawiki" ? "Catawiki：12.5% + Payoneer：2%" : "ヤフオク・メルカリ：10%");
+  const marketLabel = (m) =>
+    m === "ebay" ? "ebay" :
+    (m === "catawiki" ? "catawiki" :
+    (m === "quickdo" ? "QuickDo" :
+    "ヤフオク・メルカリ"));
+
+  const baseRate = (m) =>
+    m === "ebay" ? (0.15+0.02) :
+    (m === "catawiki" ? (0.125+0.02) :
+    (m === "quickdo" ? 0 : 0.10));
+
+  const baseNote = (m) =>
+    m === "ebay" ? "eBay：15% + Payoneer：2%" :
+    (m === "catawiki" ? "Catawiki：12.5% + Payoneer：2%" :
+    (m === "quickdo" ? "QuickDo：段階手数料" :
+    "ヤフオク・メルカリ：10%"));
+
+  // QuickDo：商品代(JPY)→ { feeJpy, pctText, rangeText }
+  const quickDoFeeInfo = (itemJpy) => {
+    if (!isFinite(itemJpy) || itemJpy <= 0) return { feeJpy: NaN, pctText: "", rangeText: "" };
+
+    if (itemJpy <= 4999) {
+      return { feeJpy: 1300 + itemJpy * 0.07, pctText: "1300円＋7%", rangeText: "1円～4,999円" };
+    }
+    if (itemJpy <= 9999) {
+      return { feeJpy: itemJpy * 0.35, pctText: "35%", rangeText: "5,000円～9,999円" };
+    }
+    if (itemJpy <= 19999) {
+      return { feeJpy: itemJpy * 0.25, pctText: "25%", rangeText: "10,000円～19,999円" };
+    }
+    if (itemJpy <= 49999) {
+      return { feeJpy: itemJpy * 0.18, pctText: "18%", rangeText: "20,000円～49,999円" };
+    }
+    if (itemJpy <= 99999) {
+      return { feeJpy: itemJpy * 0.12, pctText: "12%", rangeText: "50,000円～99,999円" };
+    }
+    if (itemJpy <= 199999) {
+      return { feeJpy: itemJpy * 0.10, pctText: "10%", rangeText: "100,000円～199,999円" };
+    }
+    if (itemJpy <= 499999) {
+      return { feeJpy: itemJpy * 0.09, pctText: "9%", rangeText: "200,000円～499,999円" };
+    }
+    return { feeJpy: itemJpy * 0.08, pctText: "8%", rangeText: "500,000円～" };
+  };
 
   const focusTo = (el) => {
     if (!el) return;
@@ -485,7 +621,13 @@
   };
 
   let active = "JPY";
-  const autoCurrencyByMarket = (m) => (m === "catawiki") ? "EUR" : "JPY";
+
+  const autoCurrencyByMarket = (m) => {
+    if (m === "catawiki") return "EUR";
+    if (m === "quickdo") return "JPY";
+    if (m === "domestic") return "JPY";
+    return "JPY";
+  };
 
   const setActive = (cur, {focusAmount=false}={}) => {
     active = cur;
@@ -494,6 +636,16 @@
     amountPrefix.textContent = sym(cur);
     calc();
     if (focusAmount) focusTo(amountEl);
+  };
+
+  // QuickDo/国内はJPY固定（USD/EURチップ無効）
+  const updateCurrencyLock = (m) => {
+    const lockJPY = (m === "quickdo" || m === "domestic");
+    chips.forEach(btn => {
+      const isJPY = btn.dataset.cur === "JPY";
+      btn.disabled = lockJPY ? !isJPY : false;
+    });
+    if (lockJPY && active !== "JPY") setActive("JPY");
   };
 
   const updateFxHint = (amount, cur, usdJpy, eurJpy) => {
@@ -523,9 +675,14 @@
 
     rMarket.textContent = "—";
     rGross.textContent = "—";
+    rBill.textContent = "—";
     rFee.textContent = "—";
     rPayout.textContent = "—";
-    rShip.textContent = "—";
+    rActualShip.textContent = "—";
+    rActualDuty.textContent = "—";
+    rDeltaRow.style.display = "none";
+    rDelta.textContent = "—";
+
     rCostLabel.textContent = "仕入（入札上限）";
     rCost.textContent = "—";
     rProfit.textContent = "—";
@@ -533,28 +690,17 @@
     rRefundRow.style.display = "none";
     rRefund.textContent = "—";
     rDate.textContent = "—";
+
+    actualDutyJpyViewEl.value = "";
   };
 
-  // ---- 自動フォーカス（Enter/完了/次へ + blur のみ）
-  const isUnfilledSoft = (el) => el && el.classList.contains("softInput") && !el.classList.contains("filled");
-
-  const autoFocusAfter = (sourceEl) => {
-    const seq = [amountEl, profitEl, usdEl, eurEl];
-    const idx = seq.indexOf(sourceEl);
-    if (idx < 0) return;
-
-    for (let i = idx + 1; i < seq.length; i++){
-      const target = seq[i];
-      if (isUnfilledSoft(target)) {
-        focusTo(target);
-        break;
-      }
+  const setDisabled = (el, disabled, {resetValue=null, resetChecked=null}={}) => {
+    if (!el) return;
+    el.disabled = !!disabled;
+    if (disabled) {
+      if (resetValue !== null) el.value = String(resetValue);
+      if (resetChecked !== null) el.checked = !!resetChecked;
     }
-  };
-
-  const focusOnCommit = (sourceEl) => {
-    calc();
-    autoFocusAfter(sourceEl);
   };
 
   const calc = () => {
@@ -562,33 +708,61 @@
     copyAllMsg.textContent = "";
     copyMsgTop.textContent = "";
 
-    // 必須 filled 更新
     setSoft(amountEl);
     setSoft(profitEl);
     setSoft(usdEl);
     setSoft(eurEl);
 
     const m = marketEl.value;
+    const isQD = (m === "quickdo");
+    const isDom = (m === "domestic");
+
+    // ---- JPY固定（QuickDo + 国内） ----
+    updateCurrencyLock(m);
+
+    // ---- QuickDo：多数項目を無効化（前回仕様維持） ----
+    setDisabled(includeBillEl, isQD, {resetChecked:false});
+    setDisabled(feeAdjustEl, isQD, {resetValue:""});
+    setDisabled(billEl, isQD, {resetValue:0});
+    setDisabled(actualShipEl, isQD, {resetValue:0});
+    setDisabled(actualDutyPctEl, isQD, {resetValue:""});
+    setDisabled(dutyUseCostBaseEl, isQD, {resetChecked:false});
+    if (isQD) actualDutyJpyViewEl.value = "";
+
+    // ---- 国内（ヤフオク・メルカリ）：実費関税(%) と 仕入れ価格基準 を無効化（他は有効）----
+    setDisabled(actualDutyPctEl, isDom, {resetValue:""});
+    setDisabled(dutyUseCostBaseEl, isDom, {resetChecked:false});
+    if (isDom) actualDutyJpyViewEl.value = "";
+
     const amt = parseNum(amountEl.value);
 
     const usdJpy = parseNum(usdEl.value);
     const eurJpy = parseNum(eurEl.value);
 
     const profitSetting = parseNum(profitEl.value);
-    const ship = parseNum(shipEl.value) || 0;
     const taxOn = !!taxEl.checked;
 
     const purchase = parseNum(purchaseEl.value);
     const feeAdjPct = parseNum(feeAdjustEl.value);
 
-    // save
+    const billShipTax = parseNum(billEl.value);
+    const includeBillInFee = !!includeBillEl.checked;
+
+    const actualShip = parseNum(actualShipEl.value) || 0;
+    const dutyPctRaw = parseNum(actualDutyPctEl.value);
+    const dutyUseCostBase = !!dutyUseCostBaseEl.checked;
+
     localStorage.setItem(SK.market, m);
     localStorage.setItem(SK.amount, isFinite(amt) ? String(amt) : "");
-    localStorage.setItem(SK.profit, isFinite(profitSetting) ? String(profitSetting) : (profitEl.value ?? ""));
-    localStorage.setItem(SK.ship, String(ship));
+    localStorage.setItem(SK.profit, String(profitEl.value ?? ""));
     localStorage.setItem(SK.tax, taxOn ? "1" : "0");
     localStorage.setItem(SK.purchase, String(purchaseEl.value ?? ""));
     localStorage.setItem(SK.feeAdjust, String(feeAdjustEl.value ?? ""));
+    localStorage.setItem(SK.bill, String(billEl.value ?? ""));
+    localStorage.setItem(SK.includeBill, includeBillInFee ? "1" : "0");
+    localStorage.setItem(SK.aShip, String(actualShipEl.value ?? ""));
+    localStorage.setItem(SK.aDutyPct, String(actualDutyPctEl.value ?? ""));
+    localStorage.setItem(SK.dutyUseCostBase, dutyUseCostBase ? "1" : "0");
     if (isFinite(usdJpy) && usdJpy > 0) localStorage.setItem(SK.usdJpy, String(usdJpy));
     if (isFinite(eurJpy) && eurJpy > 0) localStorage.setItem(SK.eurJpy, String(eurJpy));
 
@@ -607,43 +781,81 @@
       return;
     }
 
-    let grossJpy = NaN;
-    if (active === "JPY") grossJpy = amt;
-    if (active === "USD") grossJpy = amt * usdJpy;
-    if (active === "EUR") grossJpy = amt * eurJpy;
+    let itemJpy = NaN;
+    if (active === "JPY") itemJpy = amt;
+    if (active === "USD") itemJpy = amt * usdJpy;
+    if (active === "EUR") itemJpy = amt * eurJpy;
 
-    const base = baseRate(m);
-    const adj = (isFinite(feeAdjPct) ? feeAdjPct : 0) / 100;
-    const feeRate = Math.max(0, base + adj);
+    const billJpy = isFinite(billShipTax) ? billShipTax : 0;
+    const totalRevenueJpy = itemJpy + billJpy;
 
-    const feeJpy = grossJpy * feeRate;
-    const payoutJpy = grossJpy - feeJpy;
+    // ---- 手数料計算（QuickDoは段階制・商品代のみ） ----
+    let feeJpy = NaN;
+    let feeNote = "";
+    let feeBaseLabel = "商品代のみ";
+
+    if (m === "quickdo") {
+      const info = quickDoFeeInfo(itemJpy);
+      feeJpy = info.feeJpy;
+      // 表記変更：%（または1300円+7%）を先に、価格帯を「」で括る
+      // 例）18% 「20,000円～49,999円」
+      feeNote = `QuickDo：${info.pctText} 「${info.rangeText}」 / 商品代のみ`;
+    } else {
+      const base = baseRate(m);
+      const adj = (isFinite(feeAdjPct) ? feeAdjPct : 0) / 100;
+      const feeRate = Math.max(0, base + adj);
+
+      let feeBaseJpy = itemJpy;
+      feeBaseLabel = "商品代のみ";
+
+      if (m === "ebay") {
+        feeBaseJpy = totalRevenueJpy;
+        feeBaseLabel = "総売上";
+      } else {
+        if (includeBillInFee) {
+          feeBaseJpy = totalRevenueJpy;
+          feeBaseLabel = "商品代＋請求送料・関税";
+        } else {
+          feeBaseJpy = itemJpy;
+          feeBaseLabel = "商品代のみ";
+        }
+      }
+
+      feeJpy = feeBaseJpy * feeRate;
+
+      const baseN = baseNote(m);
+      const feeNoteRate = (!isFinite(feeAdjPct) || feeAdjPct === 0)
+        ? baseN
+        : `${baseN}  + 調整：${feeAdjPct}%`;
+      feeNote = `${feeNoteRate} / ${feeBaseLabel}`;
+    }
+    // ---- ここまで ----
+
+    const payoutJpy = totalRevenueJpy - feeJpy;
 
     const rateText =
       (active === "USD") ? `（1 USD = ${usdJpy} JPY）` :
       (active === "EUR") ? `（1 EUR = ${eurJpy} JPY）` : "";
 
-    const priceLine = `${fmtCur(active, amt)} → ${fmtJPY(grossJpy)} ${rateText}`.trim();
-
-    const baseN = baseNote(m);
-    const feeNote = (!isFinite(feeAdjPct) || feeAdjPct === 0)
-      ? baseN
-      : `${baseN}  + 調整：${feeAdjPct}%`;
+    const priceLine = `${fmtCur(active, amt)} → ${fmtJPY(itemJpy)} ${rateText}`.trim();
 
     rMarket.textContent = marketLabel(m);
     rGross.textContent = priceLine;
+    rBill.textContent = fmtJPY(billJpy);
     rFee.textContent = `${fmtJPY(feeJpy)}（${feeNote}）`;
     rPayout.textContent = fmtJPY(payoutJpy);
-    rShip.textContent = fmtJPY(ship);
+    rActualShip.textContent = fmtJPY(actualShip);
     rDate.textContent = nowDate();
 
-    // Bid Limit requires profitSetting
+    // 入札上限（利益必須）
+    const dutyPct = isFinite(dutyPctRaw) ? dutyPctRaw : 0;
+    const t = Math.max(0, dutyPct) / 100;
+
+    let bid = NaN;
     if (isFinite(profitSetting) && profitSetting > 0) {
       bidProfitHint.textContent = `利益${Math.round(profitSetting).toLocaleString()}円`;
-
-      let bid = payoutJpy - ship - profitSetting;
+      bid = (payoutJpy - actualShip - profitSetting) / (1 + t);
       if (taxOn) bid = bid / 1.10;
-
       bidTop.textContent = fmtJPY(bid);
       bidTop.dataset.copyValue = String(Math.round(bid));
     } else {
@@ -653,9 +865,42 @@
       errMsg.textContent = "利益（JPY）を入力してください（入札上限を表示するために必要です）。";
     }
 
-    // Result side: purchase overrides only result calc
+    // 実費関税（JPY）表示
+    // domesticで dutyPct は無効化されるので 0 扱いになります
+    let dutyBase = itemJpy;
+    let dutyBaseLabel = "売価";
     const hasPurchase = (isFinite(purchase) && purchase > 0);
 
+    if (dutyUseCostBase) {
+      if (hasPurchase) {
+        dutyBase = purchase;
+        dutyBaseLabel = "仕入";
+      } else {
+        dutyBase = isFinite(bid) ? bid : NaN;
+        dutyBaseLabel = "仕入";
+      }
+    }
+
+    const actualDutyJpy = (isFinite(dutyBase) ? dutyBase : NaN) * t;
+    actualDutyJpyViewEl.value = isFinite(actualDutyJpy) ? String(Math.round(actualDutyJpy)) : "";
+
+    const dutyBaseText = `${dutyBaseLabel}の${dutyPct}%`;
+
+    rActualDuty.textContent = isFinite(actualDutyJpy)
+      ? `${fmtJPY(actualDutyJpy)}（${dutyBaseText}）`
+      : (dutyPct !== 0 ? `—（${dutyBaseText}）` : fmtJPY(0));
+
+    // 差益
+    if (isFinite(billJpy) && billJpy > 0) {
+      const aDuty = isFinite(actualDutyJpy) ? actualDutyJpy : 0;
+      const delta = billJpy - (actualShip + aDuty);
+      rDeltaRow.style.display = "flex";
+      rDelta.textContent = fmtJPY(delta);
+    } else {
+      rDeltaRow.style.display = "none";
+    }
+
+    // 計算結果：仕入固定時は利益を再計算（Bid Limitには影響しない）
     let costLabel = "仕入（入札上限）";
     let costVal = NaN;
     let profitVal = NaN;
@@ -663,7 +908,8 @@
     if (hasPurchase) {
       costLabel = "仕入";
       costVal = purchase;
-      profitVal = payoutJpy - ship - purchase;
+      const dutyForProfit = isFinite(actualDutyJpy) ? actualDutyJpy : 0;
+      profitVal = payoutJpy - actualShip - dutyForProfit - purchase;
     } else {
       costLabel = "仕入（入札上限）";
       costVal = (bidTop.dataset.copyValue ? Number(bidTop.dataset.copyValue) : NaN);
@@ -674,29 +920,35 @@
     rCost.textContent = isFinite(costVal) ? fmtJPY(costVal) : "—";
     rProfit.textContent = isFinite(profitVal) ? fmtJPY(profitVal) : "—";
 
-    const profitRate = (isFinite(profitVal) && grossJpy > 0) ? (profitVal / grossJpy) * 100 : NaN;
+    const profitRate = (isFinite(profitVal) && itemJpy > 0) ? (profitVal / itemJpy) * 100 : NaN;
     rProfitRate.textContent = isFinite(profitRate) ? `${profitRate.toFixed(1)}%` : "—";
 
-    // refund (ebay/catawiki only)
+    // 還付金（ebay/catawikiのみ）
     const isOverseas = (m === "ebay" || m === "catawiki");
     rRefundRow.style.display = "none";
-    rRefund.textContent = "—";
     if (isOverseas && isFinite(costVal)) {
       const refund = (costVal + feeJpy) * 0.10;
       rRefundRow.style.display = "flex";
       rRefund.textContent = `${fmtJPY(refund)}（手数料＋仕入の10%）`;
     }
 
+    // コピー用テキスト（手数料表記も同様に反映）
     const copyLines = [];
     copyLines.push("Bid Limit Calculator");
     copyLines.push(`販売先　${marketLabel(m)}`);
-    copyLines.push(`売価　　${priceLine}`);
+    copyLines.push(`売価（商品代）　${priceLine}`);
+    copyLines.push(`請求：送料・関税　${fmtJPY(billJpy)}（売上に＋）`);
     copyLines.push(`手数料　${fmtJPY(feeJpy)}（${feeNote}）`);
     copyLines.push(`入金額　${fmtJPY(payoutJpy)}`);
-    copyLines.push(`送料・関税　${fmtJPY(ship)}`);
-    if (hasPurchase) {
-      copyLines.push(`仕入　　${fmtJPY(costVal)}`);
-    } else {
+    copyLines.push(`実費送料　${fmtJPY(actualShip)}`);
+    copyLines.push(`実費関税　${isFinite(actualDutyJpy)?fmtJPY(actualDutyJpy):"—"}（${dutyBaseText}）`);
+    if (isFinite(billJpy) && billJpy > 0) {
+      const aDuty = isFinite(actualDutyJpy) ? actualDutyJpy : 0;
+      const delta = billJpy - (actualShip + aDuty);
+      copyLines.push(`送料・関税差益　${fmtJPY(delta)}`);
+    }
+    if (hasPurchase) copyLines.push(`仕入　　${fmtJPY(costVal)}`);
+    else {
       const taxNote = taxOn ? "消費税10％ ON / ストア" : "消費税10％ OFF / 個人";
       copyLines.push(`仕入（入札上限）　${fmtJPY(costVal)}（${taxNote}）`);
     }
@@ -711,7 +963,7 @@
     bidTop.dataset.copyText = copyLines.join("\n");
   };
 
-  // ---- folds
+  // 折りたたみ
   const applyCollapse = () => {
     const cp = localStorage.getItem(SK.cProfit) === "1";
     const cf = localStorage.getItem(SK.cFx) === "1";
@@ -731,51 +983,54 @@
   bindToggle(tFx, bFx, SK.cFx);
   bindToggle(tRes, bRes, SK.cRes);
 
-  // ---- events
-  chips.forEach(btn => btn.addEventListener("click", () => setActive(btn.dataset.cur, {focusAmount:true})));
+  // 自動フォーカス
+  const autoFocusAfter = (sourceEl) => {
+    const seq = [amountEl, profitEl, usdEl, eurEl];
+    const idx = seq.indexOf(sourceEl);
+    if (idx < 0) return;
+    for (let i = idx + 1; i < seq.length; i++){
+      const target = seq[i];
+      if (isUnfilledSoft(target)) { focusTo(target); break; }
+    }
+  };
+  const focusOnCommit = (sourceEl) => { calc(); autoFocusAfter(sourceEl); };
 
-  marketEl.addEventListener("change", () => {
-    const cur = autoCurrencyByMarket(marketEl.value);
-    setActive(cur, {focusAmount:true});
-  });
-
-  // ★ input では自動フォーカスしない（計算だけ）
-  amountEl.addEventListener("input", calc);
-  profitEl.addEventListener("input", calc);
-  usdEl.addEventListener("input", calc);
-  eurEl.addEventListener("input", calc);
-
-  // ★ Enter / 完了・次へ で次へ + 保険の blur（次に未入力必須がある時だけ）
   const bindCommit = (el) => {
     el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        focusOnCommit(el);
-      }
+      if (e.key === "Enter") { e.preventDefault(); focusOnCommit(el); }
     });
     el.addEventListener("blur", () => {
-      // 空欄は飛ばさない
       if (String(el.value ?? "").trim() === "") return;
-
-      // 「次に未入力必須がある場合だけ」飛ぶ（＝2回目以降はほぼ動かない）
-      const nextExists =
+      const nextNeeded =
         (el === amountEl && isUnfilledSoft(profitEl)) ||
         (el === profitEl && isUnfilledSoft(usdEl)) ||
-        (el === usdEl && isUnfilledSoft(eurEl)) ||
-        (el === eurEl && false);
-
-      if (!nextExists) return;
-
-      focusOnCommit(el);
+        (el === usdEl && isUnfilledSoft(eurEl));
+      if (nextNeeded) focusOnCommit(el);
     });
   };
+
+  // イベント
+  chips.forEach(btn => btn.addEventListener("click", () => {
+    if (btn.disabled) return;
+    setActive(btn.dataset.cur, {focusAmount:true});
+  }));
+
+  marketEl.addEventListener("change", () => {
+    const nextCur = autoCurrencyByMarket(marketEl.value);
+    setActive(nextCur, {focusAmount:true});
+    updateCurrencyLock(marketEl.value);
+  });
+
+  [amountEl, profitEl, usdEl, eurEl].forEach(el => el.addEventListener("input", calc));
+  [taxEl, purchaseEl, feeAdjustEl, billEl, includeBillEl, actualShipEl, actualDutyPctEl, dutyUseCostBaseEl].forEach(el => {
+    el.addEventListener("input", calc);
+    el.addEventListener("change", calc);
+  });
+
   bindCommit(amountEl);
   bindCommit(profitEl);
   bindCommit(usdEl);
   bindCommit(eurEl);
-
-  // 他の入力は計算のみ
-  [shipEl, taxEl, purchaseEl, feeAdjustEl].forEach(el => el.addEventListener("input", calc));
 
   clearAmountEl.addEventListener("click", () => {
     amountEl.value = "";
@@ -813,7 +1068,7 @@
     }
   });
 
-  // ---- restore
+  // 復元
   const restore = () => {
     const m = localStorage.getItem(SK.market);
     if (m) marketEl.value = m;
@@ -827,9 +1082,6 @@
     const p = localStorage.getItem(SK.profit);
     if (p !== null) profitEl.value = p;
 
-    const s = localStorage.getItem(SK.ship);
-    if (s !== null) shipEl.value = s;
-
     const t = localStorage.getItem(SK.tax);
     if (t !== null) taxEl.checked = (t === "1");
 
@@ -838,6 +1090,21 @@
 
     const fa = localStorage.getItem(SK.feeAdjust);
     if (fa !== null) feeAdjustEl.value = fa;
+
+    const b = localStorage.getItem(SK.bill);
+    if (b !== null) billEl.value = b;
+
+    const inc = localStorage.getItem(SK.includeBill);
+    if (inc !== null) includeBillEl.checked = (inc === "1");
+
+    const as = localStorage.getItem(SK.aShip);
+    if (as !== null) actualShipEl.value = as;
+
+    const adp = localStorage.getItem(SK.aDutyPct);
+    if (adp !== null) actualDutyPctEl.value = adp;
+
+    const du = localStorage.getItem(SK.dutyUseCostBase);
+    if (du !== null) dutyUseCostBaseEl.checked = (du === "1");
 
     const uj = localStorage.getItem(SK.usdJpy);
     if (uj) usdEl.value = uj;
@@ -854,6 +1121,12 @@
     setSoft(profitEl);
     setSoft(usdEl);
     setSoft(eurEl);
+
+    updateCurrencyLock(marketEl.value);
+
+    if (marketEl.value === "quickdo" || marketEl.value === "domestic") active = "JPY";
+    chips.forEach(c => c.classList.toggle("active", c.dataset.cur === active));
+    amountPrefix.textContent = sym(active);
   };
 
   restore();
