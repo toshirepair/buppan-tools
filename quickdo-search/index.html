@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ヤフオク相場比較ツール</title>
+  <title>クイックドゥ相場リサーチツール</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
@@ -81,12 +81,12 @@
       font-size: 1rem;
       text-decoration: underline;
       color: #2563eb;
-      word-break: break-all;
+      word-break: break-word;
     }
 
     textarea.copy-area {
       width: 100%;
-      min-height: 190px;
+      min-height: 210px;
       box-sizing: border-box;
       font-size: 0.9rem;
       margin-top: 8px;
@@ -126,7 +126,7 @@
 </head>
 
 <body>
-  <h1>ヤフオク相場比較ツール</h1>
+  <h1>クイックドゥ相場リサーチツール</h1>
 
   <div class="card">
     <!-- キーワード -->
@@ -148,16 +148,17 @@
     <div class="option-row">
       <div><strong>状態</strong></div>
       <div class="inline-group">
-        <label><input type="radio" name="condition" value="動作確認済み" checked> 動作確認済み</label>
+        <label><input type="radio" name="condition" value="" checked> 指定なし</label>
+        <label><input type="radio" name="condition" value="動作確認済み"> 動作確認済み</label>
         <label><input type="radio" name="condition" value="未確認"> 未確認</label>
         <label><input type="radio" name="condition" value="訳あり"> 訳あり</label>
         <label><input type="radio" name="condition" value="現状"> 現状</label>
         <label><input type="radio" name="condition" value="ジャンク"> ジャンク</label>
       </div>
-      <div class="note">※ 選んだ状態は検索キーワードに自動で追加されます。</div>
+      <div class="note">※ 「指定なし」の場合は追加キーワードなしで、型番のみで検索します。</div>
     </div>
 
-    <button id="runBtn">検索リンク生成</button>
+    <button id="runBtn">検索開始</button>
   </div>
 
   <div id="result" class="card" style="display:none; margin-top:16px;">
@@ -182,6 +183,9 @@
 
       const keyword = buildKeyword(baseWord, selectedCondition);
 
+      // 落札相場用の select 値
+      // low  = 落札価格の安い順
+      // high = 落札価格の高い順
       const closedSortSelect = selectedSort === "low" ? "1" : "2";
       const sortLabel = selectedSort === "low" ? "落札価格の安い順" : "落札価格の高い順";
 
@@ -195,15 +199,19 @@
           url: buildClosedPrivateUrl(keyword, closedSortSelect)
         },
         {
-          label: "ヤフオク開催中（全て）【現在価格の安い順（送料込み）固定】",
-          url: buildActiveAllUrl(keyword)
+          label: "ヤフオク開催中（全て）【入札件数の多い順】",
+          url: buildActiveBidCountDescUrl(keyword)
+        },
+        {
+          label: "ヤフオク開催中（全て）【現在価格の安い順（送料込み）】",
+          url: buildActivePriceAscUrl(keyword)
         }
       ];
 
       renderLinks({
         baseWord,
         keyword,
-        condition: selectedCondition,
+        condition: selectedCondition || "指定なし",
         sortLabel,
         links
       });
@@ -218,8 +226,6 @@
     }
 
     // 終了分：ストア／大阪
-    // 参考URLベース：
-    // abatch=1, loc_cd=27 を使用
     function buildClosedStoreOsakaUrl(keyword, selectValue) {
       const p = encodeURIComponent(keyword);
       return (
@@ -238,8 +244,6 @@
     }
 
     // 終了分：個人／全国
-    // 参考URLベース：
-    // abatch=2 を使用
     function buildClosedPrivateUrl(keyword, selectValue) {
       const p = encodeURIComponent(keyword);
       return (
@@ -256,10 +260,24 @@
       );
     }
 
-    // 開催中：全て
-    // 固定仕様：現在価格の安い順（送料込み）
-    // s1=cbids & o1=a を使用
-    function buildActiveAllUrl(keyword) {
+    // 開催中：全て【入札件数の多い順】
+    function buildActiveBidCountDescUrl(keyword) {
+      const p = encodeURIComponent(keyword);
+      return (
+        "https://auctions.yahoo.co.jp/search/search" +
+        "?p=" + p +
+        "&va=" + p +
+        "&b=1" +
+        "&n=50" +
+        "&isdr=0" +
+        "&exflg=1" +
+        "&s1=bids" +
+        "&o1=a"
+      );
+    }
+
+    // 開催中：全て【現在価格の安い順（送料込み）】
+    function buildActivePriceAscUrl(keyword) {
       const p = encodeURIComponent(keyword);
       return (
         "https://auctions.yahoo.co.jp/search/search" +
@@ -291,7 +309,6 @@
             <a class="result-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">
               <strong>${escapeHtml(link.label)}</strong>
             </a>
-            <div class="small" style="margin-top:4px;">${escapeHtml(link.url)}</div>
           </li>
         `;
       });
