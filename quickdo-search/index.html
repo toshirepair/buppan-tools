@@ -208,7 +208,6 @@
 
       renderLinks({
         keyword: keywordForClosed,
-        activeKeyword: keywordForActive,
         condition: selectedCondition || "指定なし",
         sortLabel,
         links
@@ -256,7 +255,6 @@
       );
     }
 
-    // 入札件数の多い順
     function buildActiveBidCountDescUrl(keyword) {
       const p = encodeURIComponent(keyword);
       return (
@@ -308,28 +306,28 @@
 
       if (price <= 4999) {
         fee = 1300 + price * 0.07;
-        rule = "1円～4,999円：1,300円＋7%";
+        rule = "7%：1円～4,999円";
       } else if (price <= 9999) {
         fee = price * 0.35;
-        rule = "5,000円～9,999円：35%";
+        rule = "35%：5,000円～9,999円";
       } else if (price <= 19999) {
         fee = price * 0.25;
-        rule = "10,000円～19,999円：25%";
+        rule = "25%：10,000円～19,999円";
       } else if (price <= 49999) {
         fee = price * 0.18;
-        rule = "20,000円～49,999円：18%";
+        rule = "18%：20,000円～49,999円";
       } else if (price <= 99999) {
         fee = price * 0.12;
-        rule = "50,000円～99,999円：12%";
+        rule = "12%：50,000円～99,999円";
       } else if (price <= 199999) {
         fee = price * 0.10;
-        rule = "100,000円～199,999円：10%";
+        rule = "10%：100,000円～199,999円";
       } else if (price <= 499999) {
         fee = price * 0.09;
-        rule = "200,000円～499,999円：9%";
+        rule = "9%：200,000円～499,999円";
       } else {
         fee = price * 0.08;
-        rule = "500,000円～：8%";
+        rule = "8%：500,000円～";
       }
 
       return { fee, rule };
@@ -360,12 +358,12 @@
       html += `
         <div class="memo-grid">
           <div class="memo-box">
-            <label for="memoQuickdo">クイックドゥの相場</label>
-            <input type="text" id="memoQuickdo" placeholder="例：65,000円前後">
+            <label for="memoQuickdo">クイックドゥの相場（売価）</label>
+            <input type="text" id="memoQuickdo" placeholder="例：65,000">
           </div>
           <div class="memo-box">
-            <label for="memoPrivate">個人の相場</label>
-            <input type="text" id="memoPrivate" placeholder="例：42,000円前後">
+            <label for="memoPrivate">個人相場（仕入れ値）</label>
+            <input type="text" id="memoPrivate" placeholder="例：65,000">
           </div>
           <div class="memo-box memo-box-full">
             <label for="memoFree">自由メモ</label>
@@ -377,7 +375,6 @@
           <div class="profit-line"><strong>売価</strong><span id="profitSell"></span></div>
           <div class="profit-line"><strong>仕入れ値</strong><span id="profitBuy"></span></div>
           <div class="profit-line"><strong>手数料</strong><span id="profitFee"></span></div>
-          <div class="profit-line"><strong>手数料ルール</strong><span id="profitRule"></span></div>
           <div class="profit-line"><strong>利益</strong><span id="profitValue"></span></div>
         </div>
 
@@ -405,7 +402,6 @@
       const profitSell = document.getElementById("profitSell");
       const profitBuy = document.getElementById("profitBuy");
       const profitFee = document.getElementById("profitFee");
-      const profitRule = document.getElementById("profitRule");
       const profitValue = document.getElementById("profitValue");
 
       function getProfitData() {
@@ -436,16 +432,25 @@
           profitSell.textContent = "";
           profitBuy.textContent = "";
           profitFee.textContent = "";
-          profitRule.textContent = "";
           profitValue.textContent = "";
+          profitValue.style.color = "#000";
+          profitValue.style.fontWeight = "400";
           return;
         }
 
         profitSell.textContent = formatYen(dataProfit.quickdoPrice);
         profitBuy.textContent = formatYen(dataProfit.privatePrice);
-        profitFee.textContent = formatYen(dataProfit.fee);
-        profitRule.textContent = dataProfit.rule;
+        profitFee.textContent = `${formatYen(dataProfit.fee)}（${dataProfit.rule}）`;
         profitValue.textContent = formatYen(dataProfit.profit);
+
+        if (dataProfit.profit < 0) {
+          profitValue.style.color = "#dc2626";
+          profitValue.style.fontWeight = "700";
+        } else {
+          profitValue.style.color = "#000";
+          profitValue.style.fontWeight = "700";
+        }
+
         profitResult.style.display = "block";
       }
 
@@ -456,18 +461,17 @@
         copyText += `■落札相場の並び順：${data.sortLabel}\n\n`;
 
         if (memoQuickdo.value.trim()) {
-          copyText += `■クイックドゥの相場：${memoQuickdo.value.trim()}\n`;
+          copyText += `■クイックドゥの相場（売価）：${memoQuickdo.value.trim()}\n`;
         }
         if (memoPrivate.value.trim()) {
-          copyText += `■個人の相場：${memoPrivate.value.trim()}\n`;
+          copyText += `■個人相場（仕入れ値）：${memoPrivate.value.trim()}\n`;
         }
 
         const profitData = getProfitData();
         if (profitData) {
           copyText += `■売価：${formatYen(profitData.quickdoPrice)}\n`;
           copyText += `■仕入れ値：${formatYen(profitData.privatePrice)}\n`;
-          copyText += `■手数料：${formatYen(profitData.fee)}\n`;
-          copyText += `■手数料ルール：${profitData.rule}\n`;
+          copyText += `■手数料：${formatYen(profitData.fee)}（${profitData.rule}）\n`;
           copyText += `■利益：${formatYen(profitData.profit)}\n`;
         }
 
