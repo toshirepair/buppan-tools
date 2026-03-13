@@ -255,18 +255,20 @@
       );
     }
 
+    // 参考URLどおり：入札件数の多い順
     function buildActiveBidCountDescUrl(keyword) {
       const p = encodeURIComponent(keyword);
       return (
         "https://auctions.yahoo.co.jp/search/search" +
         "?p=" + p +
         "&va=" + p +
+        "&is_postage_mode=1" +
+        "&dest_pref_code=11" +
         "&b=1" +
         "&n=50" +
-        "&isdr=0" +
-        "&exflg=1" +
         "&s1=bids" +
-        "&o1=d"
+        "&o1=a" +
+        "&mode=2"
       );
     }
 
@@ -362,8 +364,8 @@
             <input type="text" id="memoQuickdo" placeholder="例：65,000">
           </div>
           <div class="memo-box">
-            <label for="memoPrivate">個人相場（仕入れ値）</label>
-            <input type="text" id="memoPrivate" placeholder="例：65,000">
+            <label for="memoPrivate">個人の相場（仕入れ値）</label>
+            <input type="text" id="memoPrivate" placeholder="例：45,000">
           </div>
           <div class="memo-box memo-box-full">
             <label for="memoFree">自由メモ</label>
@@ -464,13 +466,11 @@
           copyText += `■クイックドゥの相場（売価）：${memoQuickdo.value.trim()}\n`;
         }
         if (memoPrivate.value.trim()) {
-          copyText += `■個人相場（仕入れ値）：${memoPrivate.value.trim()}\n`;
+          copyText += `■個人の相場（仕入れ値）：${memoPrivate.value.trim()}\n`;
         }
 
         const profitData = getProfitData();
         if (profitData) {
-          copyText += `■売価：${formatYen(profitData.quickdoPrice)}\n`;
-          copyText += `■仕入れ値：${formatYen(profitData.privatePrice)}\n`;
           copyText += `■手数料：${formatYen(profitData.fee)}（${profitData.rule}）\n`;
           copyText += `■利益：${formatYen(profitData.profit)}\n`;
         }
