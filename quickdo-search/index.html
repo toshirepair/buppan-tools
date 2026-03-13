@@ -74,7 +74,7 @@
     }
     textarea.copy-area {
       width: 100%;
-      min-height: 220px;
+      min-height: 240px;
       box-sizing: border-box;
       font-size: 0.85rem;
       margin-top: 8px;
@@ -91,6 +91,9 @@
       margin-bottom: 6px;
       font-weight: 600;
     }
+    .memo-box-full {
+      grid-column: 1 / -1;
+    }
     .option-row {
       margin-top: 12px;
     }
@@ -100,12 +103,23 @@
       gap: 12px;
       margin-top: 6px;
     }
+    .profit-box {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      background: #fafafa;
+    }
+    .profit-box strong {
+      display: inline-block;
+      min-width: 120px;
+    }
+    .profit-line {
+      margin-bottom: 6px;
+    }
     @media (min-width: 700px) {
       .memo-grid {
         grid-template-columns: 1fr 1fr;
-      }
-      .memo-box-full {
-        grid-column: 1 / -1;
       }
     }
   </style>
@@ -115,13 +129,11 @@
   <h1>クイックドゥ相場リサーチツール</h1>
 
   <div class="card">
-    <!-- キーワード -->
     <div>
       <label for="keyword"><strong>型番（ベースキーワード）</strong></label>
       <input type="text" id="keyword" placeholder="例：Nikon D750">
     </div>
 
-    <!-- 並び順 -->
     <div class="option-row">
       <div><strong>並び順（落札相場）</strong></div>
       <div class="inline-group">
@@ -130,7 +142,6 @@
       </div>
     </div>
 
-    <!-- 状態 -->
     <div class="option-row">
       <div><strong>状態</strong></div>
       <div class="inline-group">
@@ -170,10 +181,7 @@
       const selectedSort = document.querySelector('input[name="sortOrder"]:checked')?.value || "low";
       const selectedCondition = document.querySelector('input[name="condition"]:checked')?.value || "";
 
-      // 過去の落札相場用キーワード（状態あり）
       const keywordForClosed = buildKeyword(baseWord, selectedCondition);
-
-      // 開催中検索用キーワード（状態なし＝ベースキーワードのみ）
       const keywordForActive = baseWord;
 
       const closedSortSelect = selectedSort === "low" ? "1" : "2";
@@ -248,6 +256,7 @@
       );
     }
 
+    // 入札件数の多い順
     function buildActiveBidCountDescUrl(keyword) {
       const p = encodeURIComponent(keyword);
       return (
@@ -276,6 +285,54 @@
         "&s1=cbids" +
         "&o1=a"
       );
+    }
+
+    function parseMoney(value) {
+      if (!value) return NaN;
+      const normalized = String(value)
+        .replace(/[￥¥円,\s]/g, "")
+        .replace(/[^\d.]/g, "");
+      return normalized ? Number(normalized) : NaN;
+    }
+
+    function formatYen(value) {
+      if (!Number.isFinite(value)) return "";
+      return "¥" + Math.round(value).toLocaleString("ja-JP");
+    }
+
+    function calcQuickdoFee(price) {
+      if (!Number.isFinite(price) || price < 0) return { fee: NaN, rule: "" };
+
+      let fee = 0;
+      let rule = "";
+
+      if (price <= 4999) {
+        fee = 1300 + price * 0.07;
+        rule = "1円～4,999円：1,300円＋7%";
+      } else if (price <= 9999) {
+        fee = price * 0.35;
+        rule = "5,000円～9,999円：35%";
+      } else if (price <= 19999) {
+        fee = price * 0.25;
+        rule = "10,000円～19,999円：25%";
+      } else if (price <= 49999) {
+        fee = price * 0.18;
+        rule = "20,000円～49,999円：18%";
+      } else if (price <= 99999) {
+        fee = price * 0.12;
+        rule = "50,000円～99,999円：12%";
+      } else if (price <= 199999) {
+        fee = price * 0.10;
+        rule = "100,000円～199,999円：10%";
+      } else if (price <= 499999) {
+        fee = price * 0.09;
+        rule = "200,000円～499,999円：9%";
+      } else {
+        fee = price * 0.08;
+        rule = "500,000円～：8%";
+      }
+
+      return { fee, rule };
     }
 
     function renderLinks(data) {
@@ -316,6 +373,14 @@
           </div>
         </div>
 
+        <div id="profitResult" class="profit-box" style="display:none;">
+          <div class="profit-line"><strong>売価</strong><span id="profitSell"></span></div>
+          <div class="profit-line"><strong>仕入れ値</strong><span id="profitBuy"></span></div>
+          <div class="profit-line"><strong>手数料</strong><span id="profitFee"></span></div>
+          <div class="profit-line"><strong>手数料ルール</strong><span id="profitRule"></span></div>
+          <div class="profit-line"><strong>利益</strong><span id="profitValue"></span></div>
+        </div>
+
         <div style="margin-top:12px;">
           <button type="button" id="copyBtn">この結果をコピー</button>
           <button type="button" id="openChatworkBtn" class="btn-gray" style="margin-left:8px;">
@@ -336,6 +401,54 @@
       const memoPrivate = document.getElementById("memoPrivate");
       const memoFree = document.getElementById("memoFree");
 
+      const profitResult = document.getElementById("profitResult");
+      const profitSell = document.getElementById("profitSell");
+      const profitBuy = document.getElementById("profitBuy");
+      const profitFee = document.getElementById("profitFee");
+      const profitRule = document.getElementById("profitRule");
+      const profitValue = document.getElementById("profitValue");
+
+      function getProfitData() {
+        const quickdoPrice = parseMoney(memoQuickdo.value);
+        const privatePrice = parseMoney(memoPrivate.value);
+
+        if (!Number.isFinite(quickdoPrice) || !Number.isFinite(privatePrice)) {
+          return null;
+        }
+
+        const feeInfo = calcQuickdoFee(quickdoPrice);
+        const profit = quickdoPrice - privatePrice - feeInfo.fee;
+
+        return {
+          quickdoPrice,
+          privatePrice,
+          fee: feeInfo.fee,
+          rule: feeInfo.rule,
+          profit
+        };
+      }
+
+      function refreshProfitBox() {
+        const dataProfit = getProfitData();
+
+        if (!dataProfit) {
+          profitResult.style.display = "none";
+          profitSell.textContent = "";
+          profitBuy.textContent = "";
+          profitFee.textContent = "";
+          profitRule.textContent = "";
+          profitValue.textContent = "";
+          return;
+        }
+
+        profitSell.textContent = formatYen(dataProfit.quickdoPrice);
+        profitBuy.textContent = formatYen(dataProfit.privatePrice);
+        profitFee.textContent = formatYen(dataProfit.fee);
+        profitRule.textContent = dataProfit.rule;
+        profitValue.textContent = formatYen(dataProfit.profit);
+        profitResult.style.display = "block";
+      }
+
       function buildCopyText() {
         let copyText = "";
         copyText += `■検索キーワード：${data.keyword}\n`;
@@ -348,11 +461,26 @@
         if (memoPrivate.value.trim()) {
           copyText += `■個人の相場：${memoPrivate.value.trim()}\n`;
         }
+
+        const profitData = getProfitData();
+        if (profitData) {
+          copyText += `■売価：${formatYen(profitData.quickdoPrice)}\n`;
+          copyText += `■仕入れ値：${formatYen(profitData.privatePrice)}\n`;
+          copyText += `■手数料：${formatYen(profitData.fee)}\n`;
+          copyText += `■手数料ルール：${profitData.rule}\n`;
+          copyText += `■利益：${formatYen(profitData.profit)}\n`;
+        }
+
         if (memoFree.value.trim()) {
           copyText += `■自由メモ：${memoFree.value.trim()}\n`;
         }
 
-        if (memoQuickdo.value.trim() || memoPrivate.value.trim() || memoFree.value.trim()) {
+        if (
+          memoQuickdo.value.trim() ||
+          memoPrivate.value.trim() ||
+          memoFree.value.trim() ||
+          profitData
+        ) {
           copyText += `\n`;
         }
 
@@ -363,15 +491,16 @@
         return copyText;
       }
 
-      function refreshCopyArea() {
+      function refreshAll() {
+        refreshProfitBox();
         copyArea.value = buildCopyText();
       }
 
-      memoQuickdo.addEventListener("input", refreshCopyArea);
-      memoPrivate.addEventListener("input", refreshCopyArea);
-      memoFree.addEventListener("input", refreshCopyArea);
+      memoQuickdo.addEventListener("input", refreshAll);
+      memoPrivate.addEventListener("input", refreshAll);
+      memoFree.addEventListener("input", refreshAll);
 
-      refreshCopyArea();
+      refreshAll();
 
       if (copyBtn && copyArea) {
         copyBtn.addEventListener("click", async function () {
